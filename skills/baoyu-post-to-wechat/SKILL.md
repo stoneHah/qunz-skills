@@ -185,7 +185,7 @@ test -f skills/baoyu-markdown-to-html/SKILL.md && echo "found"
 No markdown-to-html skill found.
 
 Suggested installation:
-https://github.com/JimLiu/baoyu-skills/blob/main/skills/baoyu-markdown-to-html/SKILL.md
+https://github.com/stoneHah/qunz-skills/blob/main/skills/baoyu-markdown-to-html/SKILL.md
 
 Options:
 A) Cancel - install the skill first

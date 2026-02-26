@@ -14,7 +14,7 @@
 ### 快速安装（推荐）
 
 ```bash
-npx skills add jimliu/baoyu-skills
+npx skills add stoneHah/qunz-skills
 ```
 
 ### 注册插件市场
@@ -22,7 +22,7 @@ npx skills add jimliu/baoyu-skills
 在 Claude Code 中运行：
 
 ```bash
-/plugin marketplace add jimliu/baoyu-skills
+/plugin marketplace add stoneHah/qunz-skills
 ```
 
 ### 安装技能
@@ -47,7 +47,7 @@ npx skills add jimliu/baoyu-skills
 
 直接告诉 Claude Code：
 
-> 请帮我安装 github.com/JimLiu/baoyu-skills 中的 Skills
+> 请帮我安装 github.com/stoneHah/qunz-skills 中的 Skills
 
 ### 可用插件
 
