@@ -38,6 +38,7 @@ Environment variables:
   REPLICATE_IMAGE_MODEL     Default Replicate model (google/nano-banana-pro)
   APIMART_IMAGE_MODEL       Default APIMart model (gemini-3-pro-image-preview)
   OPENAI_BASE_URL           Custom OpenAI endpoint
+  OPENAI_IMAGE_USE_CHAT     Use /chat/completions instead of /images/generations (true|false)
   GOOGLE_BASE_URL           Custom Google endpoint
   DASHSCOPE_BASE_URL        Custom DashScope endpoint
   REPLICATE_BASE_URL        Custom Replicate endpoint

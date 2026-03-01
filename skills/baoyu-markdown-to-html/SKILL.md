@@ -92,6 +92,7 @@ test -f "$HOME/.baoyu-skills/baoyu-post-to-wechat/EXTEND.md" && grep -o 'default
 | `default` (Recommended) | 经典主题 - 传统排版，标题居中带底边，二级标题白字彩底 |
 | `grace` | 优雅主题 - 文字阴影，圆角卡片，精致引用块 |
 | `simple` | 简洁主题 - 现代极简风，不对称圆角，清爽留白 |
+| `modern` | 现代主题 - 大圆角、药丸形标题、宽松行距（搭配 `--color red` 还原传统红金风格） |
 
 ### Step 2: Convert
 
@@ -113,10 +114,31 @@ npx -y bun ${SKILL_DIR}/scripts/main.ts <markdown_file> [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--theme <name>` | Theme name (default, grace, simple) | default |
+| `--theme <name>` | Theme name (default, grace, simple, modern) | default |
+| `--color <name\|hex>` | Primary color: preset name or hex value | theme default |
+| `--font-family <name>` | Font: sans, serif, serif-cjk, mono, or CSS value | theme default |
+| `--font-size <N>` | Font size: 14px, 15px, 16px, 17px, 18px | 16px |
 | `--title <title>` | Override title from frontmatter | |
 | `--keep-title` | Keep the first heading in content | false (removed) |
 | `--help` | Show help | |
+
+**Color Presets:**
+
+| Name | Hex | Label |
+|------|-----|-------|
+| blue | #0F4C81 | 经典蓝 |
+| green | #009874 | 翡翠绿 |
+| vermilion | #FA5151 | 活力橘 |
+| yellow | #FECE00 | 柠檬黄 |
+| purple | #92617E | 薰衣紫 |
+| sky | #55C9EA | 天空蓝 |
+| rose | #B76E79 | 玫瑰金 |
+| olive | #556B2F | 橄榄绿 |
+| black | #333333 | 石墨黑 |
+| gray | #A9A9A9 | 雾烟灰 |
+| pink | #FFB7C5 | 樱花粉 |
+| red | #A93226 | 中国红 |
+| orange | #D97757 | 暖橘 (modern default) |
 
 **Examples:**
 
@@ -126,6 +148,9 @@ npx -y bun ${SKILL_DIR}/scripts/main.ts article.md
 
 # With specific theme
 npx -y bun ${SKILL_DIR}/scripts/main.ts article.md --theme grace
+
+# Theme with custom color
+npx -y bun ${SKILL_DIR}/scripts/main.ts article.md --theme modern --color red
 
 # Keep the first heading in content
 npx -y bun ${SKILL_DIR}/scripts/main.ts article.md --keep-title
@@ -169,6 +194,7 @@ npx -y bun ${SKILL_DIR}/scripts/main.ts article.md --title "My Article"
 | `default` | 经典主题 - 传统排版，标题居中带底边，二级标题白字彩底 |
 | `grace` | 优雅主题 - 文字阴影，圆角卡片，精致引用块 (by @brzhang) |
 | `simple` | 简洁主题 - 现代极简风，不对称圆角，清爽留白 (by @okooo5km) |
+| `modern` | 现代主题 - 大圆角、药丸形标题、宽松行距（搭配 `--color red` 还原传统红金风格） |
 
 ## Supported Markdown Features
 

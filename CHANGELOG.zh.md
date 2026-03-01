@@ -2,6 +2,76 @@
 
 [English](./CHANGELOG.md) | 中文
 
+## 1.42.2 - 2026-03-01
+
+### 新功能
+- `baoyu-markdown-to-html`：内联渲染管线（移除子进程），修复 CJK 强调符号处理顺序，增强 modern 主题（GFM 警告块、排版改进）
+- `baoyu-post-to-wechat`：内置 Markdown 转换模块化渲染器，新增颜色支持，简化发布流程
+
+## 1.42.1 - 2026-02-28
+
+### 新功能
+- `baoyu-markdown-to-html`：将 render.ts 拆分为 cli、constants、extend-config、html-builder、renderer、themes、types 模块；本地打包代码高亮主题
+
+## 1.42.0 - 2026-02-28
+
+### 新功能
+- `baoyu-markdown-to-html`：合并 heritage 和 warm 为 modern 主题，新增主题默认颜色（default→蓝、grace→紫、simple→绿、modern→橙）
+- `baoyu-post-to-wechat`：EXTEND.md 新增默认颜色配置，首次设置增加 modern 主题和颜色选择
+
+## 1.41.0 - 2026-02-28
+
+### 新功能
+- `baoyu-markdown-to-html`：重命名主题（red→heritage、orange→warm），新增 13 个颜色预设、serif-cjk 字体、主题级样式默认值
+
+## 1.40.1 - 2026-02-28
+
+### 新功能
+- `baoyu-image-gen`：明确模型解析优先级（EXTEND.md 优先于环境变量），生成图片时显示当前模型及切换方式
+
+## 1.40.0 - 2026-02-28
+
+### 新功能
+- `baoyu-image-gen`：支持 OpenAI Chat Completions 端点生成图片 (by @zhao-newname)
+- `baoyu-markdown-to-html`：新增 CLI 自定义选项（--color、--font-family、--font-size、--code-theme、--mac-code-block、--line-number、--cite、--count、--legend）及 EXTEND.md 配置支持
+
+## 1.39.0 - 2026-02-28
+
+### 新功能
+- `baoyu-markdown-to-html`：新增红色主题（红金配色、宋体排版、传统书法风格）和橙色主题（暖色调现代风、圆角装饰、宽松行距）
+
+## 1.38.0 - 2026-02-28
+
+### 新功能
+- `baoyu-danger-x-to-markdown`：支持文章内嵌推文渲染，以引用块形式显示作者信息和推文摘要
+- `baoyu-danger-x-to-markdown`：`--download-media` 复用已转换的 Markdown 文件，跳过重复抓取
+- `baoyu-danger-x-to-markdown`：推特图片下载升级至 4096x4096 高分辨率
+
+### 修复
+- `baoyu-danger-x-to-markdown`：改进实体解析逻辑，通过逻辑键查找提升媒体和链接映射准确性
+- `baoyu-danger-x-to-markdown`：所有区块类型（标题、列表、引用块）支持尾随媒体展示
+
+## 1.37.1 - 2026-02-27
+
+### 修复
+- `baoyu-danger-gemini-web`：同步上游模型请求头并更新模型列表 (by @xkcoding)
+
+## 1.37.0 - 2026-02-27
+
+### 新功能
+- `baoyu-danger-x-to-markdown`：支持 X 文章内联链接渲染，将 LINK/MEDIA 实体映射为 Markdown 链接
+- `baoyu-danger-x-to-markdown`：输出目录使用基于内容的 slug，生成更有意义的文件夹名称
+- `baoyu-danger-x-to-markdown`：新增 atomic 媒体队列，支持无直接媒体引用的区块
+
+## 1.36.0 - 2026-02-27
+
+### 新功能
+- `baoyu-image-gen`：新增 `gemini-3.1-flash-image-preview` Google 多模态图片生成模型支持
+- `baoyu-image-gen`：优化首次使用引导流程，支持阻塞式偏好配置
+
+### 修复
+- `baoyu-image-gen`：检测到 HTTP 代理时自动回退使用 curl 调用 Google API (by @liye71023326)
+
 ## 1.35.0 - 2026-02-24
 
 ### 新功能

@@ -2,6 +2,76 @@
 
 English | [中文](./CHANGELOG.zh.md)
 
+## 1.42.2 - 2026-03-01
+
+### Features
+- `baoyu-markdown-to-html`: inline rendering pipeline (no subprocess), fix CJK emphasis order, enhance modern theme with GFM alerts and improved typography
+- `baoyu-post-to-wechat`: internalize markdown conversion with modular renderer, add color support, simplify publishing workflow
+
+## 1.42.1 - 2026-02-28
+
+### Features
+- `baoyu-markdown-to-html`: modularize render.ts into cli, constants, extend-config, html-builder, renderer, themes, and types modules; bundle code highlighting themes locally
+
+## 1.42.0 - 2026-02-28
+
+### Features
+- `baoyu-markdown-to-html`: consolidate heritage and warm into single modern theme, add per-theme color defaults (default→blue, grace→purple, simple→green, modern→orange)
+- `baoyu-post-to-wechat`: add default color preference support in EXTEND.md, add modern theme option to first-time setup
+
+## 1.41.0 - 2026-02-28
+
+### Features
+- `baoyu-markdown-to-html`: rename themes (red→heritage, orange→warm), add 13 named color presets, serif-cjk font family, and per-theme style defaults
+
+## 1.40.1 - 2026-02-28
+
+### Features
+- `baoyu-image-gen`: clarify model resolution priority (EXTEND.md overrides env vars) and display current model with switch hints during generation
+
+## 1.40.0 - 2026-02-28
+
+### Features
+- `baoyu-image-gen`: support OpenAI chat completions endpoint for image generation (by @zhao-newname)
+- `baoyu-markdown-to-html`: add CLI customization options (--color, --font-family, --font-size, --code-theme, --mac-code-block, --line-number, --cite, --count, --legend) and EXTEND.md config support
+
+## 1.39.0 - 2026-02-28
+
+### Features
+- `baoyu-markdown-to-html`: add red theme (traditional calligraphy style with red-gold palette and serif typography) and orange theme (warm modern style with rounded corners and relaxed line height)
+
+## 1.38.0 - 2026-02-28
+
+### Features
+- `baoyu-danger-x-to-markdown`: render embedded tweets in articles as blockquotes with author info and text summary
+- `baoyu-danger-x-to-markdown`: reuse existing markdown when `--download-media` targets already-converted URLs
+- `baoyu-danger-x-to-markdown`: upgrade Twitter image downloads to 4096x4096 high resolution
+
+### Fixes
+- `baoyu-danger-x-to-markdown`: improve entity resolution with logical key lookup for reliable media and link mapping
+- `baoyu-danger-x-to-markdown`: support trailing media for all block types (headings, lists, blockquotes)
+
+## 1.37.1 - 2026-02-27
+
+### Fixes
+- `baoyu-danger-gemini-web`: sync model headers with upstream and update model list (by @xkcoding)
+
+## 1.37.0 - 2026-02-27
+
+### Features
+- `baoyu-danger-x-to-markdown`: add inline link rendering for X article content, mapping LINK/MEDIA entities to markdown links
+- `baoyu-danger-x-to-markdown`: use content-based slug in output directory path for meaningful folder names
+- `baoyu-danger-x-to-markdown`: add atomic media queue for blocks without direct media references
+
+## 1.36.0 - 2026-02-27
+
+### Features
+- `baoyu-image-gen`: add `gemini-3.1-flash-image-preview` model support for Google multimodal image generation
+- `baoyu-image-gen`: improve first-time setup with blocking preferences flow and guided configuration
+
+### Fixes
+- `baoyu-image-gen`: use curl fallback for Google API when HTTP proxy is detected (by @liye71023326)
+
 ## 1.35.0 - 2026-02-24
 
 ### Features
