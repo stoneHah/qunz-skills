@@ -5,6 +5,7 @@ import process from "node:process";
 
 import { CdpConnection, getFreePort, launchChrome, waitForChromeDebugPort, waitForNetworkIdle, waitForPageLoad, autoScroll, evaluateScript, killChrome } from "./cdp.js";
 import { absolutizeUrlsScript, extractContent, createMarkdownDocument, type ConversionResult } from "./html-to-markdown.js";
+import { localizeMarkdownMedia, countRemoteMedia } from "./media-localizer.js";
 import { resolveUrlToMarkdownDataDir } from "./paths.js";
 import { DEFAULT_TIMEOUT_MS, CDP_CONNECT_TIMEOUT_MS, NETWORK_IDLE_TIMEOUT_MS, POST_LOAD_DELAY_MS, SCROLL_STEP_WAIT_MS, SCROLL_MAX_STEPS } from "./constants.js";
 
@@ -26,10 +27,11 @@ interface Args {
   output?: string;
   wait: boolean;
   timeout: number;
+  downloadMedia: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { url: "", wait: false, timeout: DEFAULT_TIMEOUT_MS };
+  const args: Args = { url: "", wait: false, timeout: DEFAULT_TIMEOUT_MS, downloadMedia: false };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--wait" || arg === "-w") {
@@ -38,6 +40,8 @@ function parseArgs(argv: string[]): Args {
       args.output = argv[++i];
     } else if (arg === "--timeout" || arg === "-t") {
       args.timeout = parseInt(argv[++i], 10) || DEFAULT_TIMEOUT_MS;
+    } else if (arg === "--download-media") {
+      args.downloadMedia = true;
     } else if (!arg.startsWith("-") && !args.url) {
       args.url = arg;
     }
@@ -153,7 +157,24 @@ async function main(): Promise<void> {
   const outputDir = path.dirname(outputPath);
   await mkdir(outputDir, { recursive: true });
 
-  const document = createMarkdownDocument(result);
+  let document = createMarkdownDocument(result);
+
+  if (args.downloadMedia) {
+    const mediaResult = await localizeMarkdownMedia(document, {
+      markdownPath: outputPath,
+      log: console.log,
+    });
+    document = mediaResult.markdown;
+    if (mediaResult.downloadedImages > 0 || mediaResult.downloadedVideos > 0) {
+      console.log(`Downloaded: ${mediaResult.downloadedImages} images, ${mediaResult.downloadedVideos} videos`);
+    }
+  } else {
+    const { images, videos } = countRemoteMedia(document);
+    if (images > 0 || videos > 0) {
+      console.log(`Remote media found: ${images} images, ${videos} videos`);
+    }
+  }
+
   await writeFile(outputPath, document, "utf-8");
 
   console.log(`Saved: ${outputPath}`);

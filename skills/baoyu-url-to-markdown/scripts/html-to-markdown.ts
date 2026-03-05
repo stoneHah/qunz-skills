@@ -7,6 +7,7 @@ export interface PageMetadata {
   description?: string;
   author?: string;
   published?: string;
+  coverImage?: string;
   captured_at: string;
 }
 
@@ -39,6 +40,12 @@ export const absolutizeUrlsScript = String.raw`
       }).filter(Boolean).join(", "));
     });
   }
+  document.querySelectorAll("img[data-src], video[data-src], audio[data-src], source[data-src]").forEach(el => {
+    const ds = el.getAttribute("data-src");
+    if (ds && (!el.getAttribute("src") || el.getAttribute("src") === "" || el.getAttribute("src")?.startsWith("data:"))) {
+      el.setAttribute("src", ds);
+    }
+  });
   absAttr("a[href]", "href");
   absAttr("img[src], video[src], audio[src], source[src]", "src");
   absSrcset("img[srcset], source[srcset]");
@@ -56,6 +63,7 @@ export async function extractContent(html: string, url: string): Promise<Convers
     description: result.description || undefined,
     author: result.author || undefined,
     published: result.published || undefined,
+    coverImage: result.image || undefined,
     captured_at: new Date().toISOString(),
   };
 
@@ -73,6 +81,7 @@ export function formatMetadataYaml(meta: PageMetadata): string {
   if (meta.description) lines.push(`description: "${escapeYamlValue(meta.description)}"`);
   if (meta.author) lines.push(`author: "${escapeYamlValue(meta.author)}"`);
   if (meta.published) lines.push(`published: "${escapeYamlValue(meta.published)}"`);
+  if (meta.coverImage) lines.push(`coverImage: "${escapeYamlValue(meta.coverImage)}"`);
   lines.push(`captured_at: "${escapeYamlValue(meta.captured_at)}"`);
   lines.push("---");
   return lines.join("\n");
