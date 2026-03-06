@@ -1,0 +1,8 @@
+{
+  "name": "qunz-video-extract-scripts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

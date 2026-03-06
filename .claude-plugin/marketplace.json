@@ -42,6 +42,7 @@
       "strict": false,
       "skills": [
         "./skills/baoyu-danger-x-to-markdown",
+        "./skills/qunz-video-extract",
         "./skills/baoyu-compress-image",
         "./skills/baoyu-url-to-markdown",
         "./skills/baoyu-format-markdown",
