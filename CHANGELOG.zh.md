@@ -2,6 +2,215 @@
 
 [English](./CHANGELOG.md) | 中文
 
+## 1.59.0 - 2026-03-09
+
+### 新功能
+- `baoyu-image-gen`：新增批量并行图片生成和提供商级别限流 (by @SeamoonAO)
+
+### 修复
+- `baoyu-image-gen`：修复多个 API key 可用时恢复 Google 为默认提供商
+
+### 文档
+- 改进技能文档清晰度 (by @SeamoonAO)
+
+## 1.58.0 - 2026-03-08
+
+### 新功能
+- 新增 EXTEND.md 的 XDG 配置路径支持 (by @liby)
+
+### 修复
+- `baoyu-post-to-wechat`：暴露 agent-browser 启动错误信息
+- `baoyu-post-to-wechat`：加固 agent-browser 命令和 eval 处理 (by @luojiyin1987)
+- `baoyu-image-gen`：使用 execFileSync 替代 shell 执行 Google curl 请求 (by @luojiyin1987)
+- `baoyu-format-markdown`：使用 spawnSync 替代 shell 执行 autocorrect 命令 (by @luojiyin1987)
+
+### 文档
+- 修正 CLAUDE 依赖说明 (by @luojiyin1987)
+- 将 markdown-to-html 添加到 README 工具技能列表 (by @luojiyin1987)
+
+## 1.57.0 - 2026-03-08
+
+### 新功能
+- 新增 ClawHub/OpenClaw 发布支持，包含同步脚本和 README 文档
+
+### 重构
+- 为所有 skill 前言添加 openclaw 元数据，兼容 ClawHub 注册表
+- 全部 skill 中将 `SKILL_DIR` 统一重命名为 `baseDir`
+- `baoyu-danger-gemini-web`、`baoyu-danger-x-to-markdown`：使用动态脚本路径显示用法
+- `baoyu-comic`、`baoyu-xhs-images`：通过 skill 接口调用图片生成，不再直接调用脚本
+
+## 1.56.1 - 2026-03-08
+
+### 修复
+- `baoyu-post-to-weibo`：简化头条文章图片插入逻辑，使用 Backspace 按键替代复杂的 deleteContents 方案，兼容 ProseMirror 编辑器
+
+## 1.56.0 - 2026-03-08
+
+### 新功能
+- `baoyu-article-illustrator`：预设优先选择流程，按内容类型分类的风格预设
+- `baoyu-xhs-images`：精简工作流从 6 步到 4 步，新增智能确认（快速/自定义/详细三种路径）
+
+### 修复
+- `baoyu-post-to-wechat`：通过文件选择器拦截改进图片上传可靠性
+
+## 1.55.0 - 2026-03-08
+
+### 新功能
+- `baoyu-article-illustrator`：新增 screen-print 风格和 `--preset` 快捷预设（如 tech-explainer、opinion-piece）
+- `baoyu-cover-image`：新增 screen-print 渲染风格和 duotone 调色板，包含 5 个新预设（poster-art、mondo 等）
+- `baoyu-xhs-images`：新增 screen-print 风格和 `--preset` 快捷预设，内置 23 个场景预设
+
+### 文档
+- 为中英文 README 新增致谢章节，致敬相关开源项目
+
+## 1.54.1 - 2026-03-07
+
+### 修复
+- `baoyu-post-to-x`：保持已填充的发帖窗口处于打开状态，方便用户手动检查并发布
+
+### 文档
+- `baoyu-post-to-x`：补充默认帖子类型选择规则和手动发布流程说明
+- `README`：为中英文 README 新增 Star History 图表
+
+## 1.54.0 - 2026-03-06
+
+### 新功能
+- `baoyu-format-markdown`：优化标题和摘要生成，支持多风格候选（颠覆型、方案型、悬念型、数字型），新增禁用模式和钩子优先原则
+- `baoyu-markdown-to-html`：新增 `--cite` 选项，将普通外链转换为底部编号引用
+- `baoyu-post-to-wechat`：Markdown 输入默认启用底部引用，新增 `--no-cite` 标志可关闭
+- `baoyu-translate`：EXTEND.md 支持 `glossary_files` 加载外部术语表文件（Markdown 表格或 YAML 格式）
+- `baoyu-translate`：新增 frontmatter 转换规则，翻译时将源文章元数据字段添加 `source` 前缀
+
+## 1.53.0 - 2026-03-06
+
+### 新功能
+- `baoyu-url-to-markdown`：将渲染后的 HTML 快照保存为 `-captured.html`，与 Markdown 文件并列输出
+- `baoyu-url-to-markdown`：优先使用 Defuddle 转换，失败时自动回退到旧版 Readability/选择器提取器
+
+## 1.52.0 - 2026-03-06
+
+### 新功能
+- `baoyu-post-to-weibo`：新增 `--video` 视频上传支持（图片+视频最多 18 个文件）
+- `baoyu-post-to-weibo`：上传方式从剪贴板粘贴改为 `DOM.setFileInputFiles`，提升上传可靠性
+
+### 修复
+- `baoyu-post-to-weibo`：新增 Chrome 健康检查，无响应时自动重启
+- `baoyu-post-to-weibo`：发布前检查页面是否在微博首页，避免在错误页面操作
+
+## 1.51.2 - 2026-03-06
+
+### 修复
+- `release-skills`：将显式语言文件名模式（如 `CHANGELOG.de.md`）替换为通用模式，避免 Gen Agent Trust Hub URL 扫描器误报
+- `baoyu-infographic`：新增凭证/密钥剥离指令，解决 Snyk W007 不安全凭证处理审计问题
+
+## 1.51.1 - 2026-03-06
+
+### 重构
+- 统一 Chrome CDP profile 路径——所有 skill 共享 `baoyu-skills/chrome-profile`，不再各自独立目录
+- 修复 `baoyu-post-to-weibo` 错误复用 `x-browser-profile` 路径的问题
+
+### 修复
+- 移除所有安装说明中的 `curl | bash` 远程代码执行模式
+- `md-to-html` 脚本强制仅允许 HTTPS 下载远程图片
+- 添加重定向次数限制（最多 5 次），防止无限重定向
+- 在 CLAUDE.md 中新增安全准则章节
+
+## 1.51.0 - 2026-03-06
+
+### 新功能
+- `baoyu-post-to-weibo`：新增微博发布技能——支持带图文本发布和头条文章，通过 Chrome CDP 自动化操作
+- `baoyu-format-markdown`：新增标题/摘要多候选项选择——生成 3 个候选供用户选择，支持 EXTEND.md 中的 `auto_select` 配置
+
+## 1.50.0 - 2026-03-06
+
+### 新功能
+- `baoyu-translate`：翻译风格预设从 4 种扩展到 9 种——新增学术、商务、幽默、口语化和优雅风格
+- `baoyu-translate`：新增 `--style` 命令行参数，支持按次指定翻译风格
+- `baoyu-translate`：将风格指令集成到子代理提示词模板
+
+## 1.49.0 - 2026-03-06
+
+### 新功能
+- `baoyu-format-markdown`：新增读者视角内容分析阶段——在应用格式之前先分析要点、结构和格式问题
+- `baoyu-format-markdown`：重构工作流从 8 步精简为 7 步，新增明确的格式化原则和完成报告模板
+- `baoyu-translate`：将步骤 2 的工作流机制提取到独立参考文件，精简 SKILL.md
+- `baoyu-translate`：扩展触发关键词（改成中文、快翻、本地化等），提升技能激活准确度
+- `baoyu-translate`：快速翻译模式下对长内容主动提示切换建议
+- `baoyu-translate`：分块时将 frontmatter 保存到 `chunks/frontmatter.md`
+
+## 1.48.2 - 2026-03-06
+
+### 新功能
+- `baoyu-translate`：在精翻工作流的审查和修订阶段新增比喻语言与情感忠实度检查
+- `baoyu-translate`：增强快速翻译模式，强制执行比喻语言的意义优先翻译原则
+
+## 1.48.1 - 2026-03-05
+
+### 新功能
+- `baoyu-translate`：在分析阶段新增比喻语言与隐喻映射——翻译前先解读隐喻、习语和隐含意义，避免字面直译
+- `baoyu-translate`：新增"意义优先于字面"、"比喻语言解读"、"情感忠实度"三项翻译原则，同步更新 SKILL.md、精翻工作流和子代理提示词模板
+
+## 1.48.0 - 2026-03-05
+
+### 新功能
+- `baoyu-translate`：为 chunk.ts 新增 `--output-dir` 选项——分块文件现在写入翻译输出目录而非源文件目录
+- `baoyu-translate`：优化精翻工作流——将审校拆分为批判性审查 + 修订（5→6 步），新增中日韩目标语言的欧化表达诊断
+
+## 1.47.0 - 2026-03-05
+
+### 新功能
+- 新增 `baoyu-translate` 翻译技能——支持快速/标准/精翻三种模式，自定义术语表、面向受众翻译、长文档自动分块并行翻译
+- 为所有技能的 EXTEND.md 偏好检测添加 PowerShell 跨平台支持
+
+## 1.46.0 - 2026-03-05
+
+### 新功能
+- 为 url-to-markdown 新增 `--output-dir` 选项，支持自定义输出目录并自动生成文件名
+
+## 1.45.1 - 2026-03-05
+
+### 重构
+- 将所有技能中硬编码的 `npx -y bun` 替换为 `${BUN_X}` 运行时变量——优先使用原生 `bun`，回退到 `npx -y bun`
+- 在 CLAUDE.md 中新增运行时检测章节，在所有 SKILL.md 的脚本目录说明中添加运行时解析步骤
+
+## 1.45.0 - 2026-03-05
+
+### 新功能
+- `baoyu-post-to-x`：X 文章发布后自动验证——检查残留占位符和图片数量是否正确
+- `baoyu-post-to-x`：增加 CDP 超时至 60 秒，图片插入间隔增加 3 秒 DOM 稳定等待，改善长文章发布稳定性
+
+## 1.44.0 - 2026-03-05
+
+### 新功能
+- `baoyu-url-to-markdown`：新增 `--download-media` 参数，支持下载图片和视频到本地目录，并将 Markdown 中的链接改写为本地路径
+- `baoyu-url-to-markdown`：从页面 meta 信息（og:image）提取封面图，写入 YAML front matter 的 `coverImage` 字段
+- `baoyu-url-to-markdown`：支持 `data-src` 懒加载图片提取（兼容微信公众号等站点）
+- `baoyu-url-to-markdown`：新增 EXTEND.md 偏好设置，支持首次使用引导配置媒体下载行为
+
+## 1.43.2 - 2026-03-05
+
+### 重构
+- `baoyu-url-to-markdown`：使用 defuddle 库替换自定义 HTML 提取逻辑（linkedom + Readability + Turndown），简化内容提取和 Markdown 转换
+
+## 1.43.1 - 2026-03-02
+
+### 新功能
+- `baoyu-post-to-x`：自动检测 WSL 环境，将 Chrome profile 路径解析为 Windows 本地路径，解决登录态丢失问题
+- `baoyu-post-to-wechat`：自动检测 WSL 环境，将 Chrome profile 路径解析为 Windows 本地路径，解决登录态丢失问题
+- `baoyu-danger-gemini-web`：WSL 自动检测 Chrome profile 路径；新增 `GEMINI_WEB_DEBUG_PORT` 环境变量支持固定调试端口
+- `baoyu-danger-x-to-markdown`：WSL 自动检测 Chrome profile 路径；新增 `X_DEBUG_PORT` 环境变量支持固定调试端口
+
+## 1.43.0 - 2026-03-02
+
+### 新功能
+- `baoyu-post-to-wechat`：支持通过环境变量覆盖浏览器调试端口（`WECHAT_BROWSER_DEBUG_PORT`）和配置目录（`WECHAT_BROWSER_PROFILE_DIR`）
+- `baoyu-post-to-x`：支持通过环境变量覆盖浏览器调试端口（`X_BROWSER_DEBUG_PORT`）和配置目录（`X_BROWSER_PROFILE_DIR`）
+
+## 1.42.3 - 2026-03-02
+
+### 修复
+- `baoyu-image-gen`：DashScope 宽高比映射改用标准预设尺寸匹配，避免自由计算产生无效分辨率
+
 ## 1.42.2 - 2026-03-01
 
 ### 新功能

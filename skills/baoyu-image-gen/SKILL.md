@@ -1,6 +1,14 @@
 ---
 name: baoyu-image-gen
-description: AI image generation with OpenAI, Google, DashScope, Replicate and APIMart APIs. Supports text-to-image, reference images, aspect ratios. Sequential by default; parallel generation available on request. Use when user asks to generate, create, or draw images.
+description: AI image generation with OpenAI, Google, DashScope, Replicate and APIMart APIs. Supports text-to-image, reference images, aspect ratios, and batch generation from saved prompt files. Sequential by default; use batch parallel generation when the user already has multiple prompts or wants stable multi-image throughput. Use when user asks to generate, create, or draw images.
+version: 1.56.1
+metadata:
+  openclaw:
+    homepage: https://github.com/JimLiu/baoyu-skills#baoyu-image-gen
+    requires:
+      anyBins:
+        - bun
+        - npx
 ---
 
 # Image Generation (AI SDK)
@@ -10,8 +18,9 @@ Official API-based image generation. Supports OpenAI, Google, DashScope (阿里�
 ## Script Directory
 
 **Agent Execution**:
-1. `SKILL_DIR` = this SKILL.md file's directory
-2. Script path = `${SKILL_DIR}/scripts/main.ts`
+1. `{baseDir}` = this SKILL.md file's directory
+2. Script path = `{baseDir}/scripts/main.ts`
+3. Resolve `${BUN_X}` runtime: if `bun` installed → `bun`; if `npx` available → `npx -y bun`; else suggest installing bun
 
 ## Step 0: Load Preferences ⛔ BLOCKING
 
@@ -20,8 +29,18 @@ Official API-based image generation. Supports OpenAI, Google, DashScope (阿里�
 Check EXTEND.md existence (priority: project → user):
 
 ```bash
+# macOS, Linux, WSL, Git Bash
 test -f .baoyu-skills/baoyu-image-gen/EXTEND.md && echo "project"
+test -f "${XDG_CONFIG_HOME:-$HOME/.config}/baoyu-skills/baoyu-image-gen/EXTEND.md" && echo "xdg"
 test -f "$HOME/.baoyu-skills/baoyu-image-gen/EXTEND.md" && echo "user"
+```
+
+```powershell
+# PowerShell (Windows)
+if (Test-Path .baoyu-skills/baoyu-image-gen/EXTEND.md) { "project" }
+$xdg = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { "$HOME/.config" }
+if (Test-Path "$xdg/baoyu-skills/baoyu-image-gen/EXTEND.md") { "xdg" }
+if (Test-Path "$HOME/.baoyu-skills/baoyu-image-gen/EXTEND.md") { "user" }
 ```
 
 | Result | Action |
@@ -36,7 +55,7 @@ test -f "$HOME/.baoyu-skills/baoyu-image-gen/EXTEND.md" && echo "user"
 | `.baoyu-skills/baoyu-image-gen/EXTEND.md` | Project directory |
 | `$HOME/.baoyu-skills/baoyu-image-gen/EXTEND.md` | User home |
 
-**EXTEND.md Supports**: Default provider | Default quality | Default aspect ratio | Default image size | Default models
+**EXTEND.md Supports**: Default provider | Default quality | Default aspect ratio | Default image size | Default models | Batch worker cap | Provider-specific batch limits
 
 Schema: `references/config/preferences-schema.md`
 
@@ -44,44 +63,77 @@ Schema: `references/config/preferences-schema.md`
 
 ```bash
 # Basic
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat" --image cat.png
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A cat" --image cat.png
 
 # With aspect ratio
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A landscape" --image out.png --ar 16:9
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A landscape" --image out.png --ar 16:9
 
 # High quality
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat" --image out.png --quality 2k
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A cat" --image out.png --quality 2k
 
 # From prompt files
-npx -y bun ${SKILL_DIR}/scripts/main.ts --promptfiles system.md content.md --image out.png
+${BUN_X} {baseDir}/scripts/main.ts --promptfiles system.md content.md --image out.png
 
 # With reference images (Google multimodal or OpenAI edits)
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "Make blue" --image out.png --ref source.png
+${BUN_X} {baseDir}/scripts/main.ts --prompt "Make blue" --image out.png --ref source.png
 
 # With reference images (explicit provider/model)
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "Make blue" --image out.png --provider google --model gemini-3-pro-image-preview --ref source.png
+${BUN_X} {baseDir}/scripts/main.ts --prompt "Make blue" --image out.png --provider google --model gemini-3-pro-image-preview --ref source.png
 
 # Specific provider
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat" --image out.png --provider openai
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A cat" --image out.png --provider openai
 
 # DashScope (阿里通义万象)
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "一只可爱的猫" --image out.png --provider dashscope
+${BUN_X} {baseDir}/scripts/main.ts --prompt "一只可爱的猫" --image out.png --provider dashscope
 
 # Replicate (google/nano-banana-pro)
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat" --image out.png --provider replicate
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A cat" --image out.png --provider replicate
 
 # Replicate with specific model
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat" --image out.png --provider replicate --model google/nano-banana
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A cat" --image out.png --provider replicate --model google/nano-banana
 
 # APIMart (Gemini-3-Pro-Image-preview, async task polling)
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat in watercolor style" --image out.png --provider apimart
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A cat in watercolor style" --image out.png --provider apimart
 
 # APIMart with reference image
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "Make this into anime style" --image out.png --provider apimart --ref source.png
+${BUN_X} {baseDir}/scripts/main.ts --prompt "Make this into anime style" --image out.png --provider apimart --ref source.png
 
 # APIMart with doubao-seedream-5-0-lite model
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cinematic mountain sunrise" --image out.png --provider apimart --model doubao-seedream-5-0-lite
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A cinematic mountain sunrise" --image out.png --provider apimart --model doubao-seedream-5-0-lite
+
+# Batch mode with saved prompt files
+${BUN_X} {baseDir}/scripts/main.ts --batchfile batch.json
+
+# Batch mode with explicit worker count
+${BUN_X} {baseDir}/scripts/main.ts --batchfile batch.json --jobs 4 --json
 ```
+
+### Batch File Format
+
+```json
+{
+  "jobs": 4,
+  "tasks": [
+    {
+      "id": "hero",
+      "promptFiles": ["prompts/hero.md"],
+      "image": "out/hero.png",
+      "provider": "replicate",
+      "model": "google/nano-banana-pro",
+      "ar": "16:9",
+      "quality": "2k"
+    },
+    {
+      "id": "diagram",
+      "promptFiles": ["prompts/diagram.md"],
+      "image": "out/diagram.png",
+      "ref": ["references/original.png"]
+    }
+  ]
+}
+```
+
+Paths in `promptFiles`, `image`, and `ref` are resolved relative to the batch file's directory. `jobs` is optional (overridden by CLI `--jobs`). Top-level array format (without `jobs` wrapper) is also accepted.
 
 ## Options
 
@@ -89,15 +141,17 @@ npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cinematic mountain sunrise" 
 |--------|-------------|
 | `--prompt <text>`, `-p` | Prompt text |
 | `--promptfiles <files...>` | Read prompt from files (concatenated) |
-| `--image <path>` | Output image path (required) |
-| `--provider google\|openai\|dashscope\|replicate\|apimart` | Force provider (default: google) |
-| `--model <id>`, `-m` | Model ID (Google: `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`; OpenAI: `gpt-image-1.5`; APIMart: `doubao-seedream-5-0-lite`) |
+| `--image <path>` | Output image path (required in single-image mode) |
+| `--batchfile <path>` | JSON batch file for multi-image generation |
+| `--jobs <count>` | Worker count for batch mode (default: auto, max from config, built-in default 10) |
+| `--provider google\|openai\|dashscope\|replicate\|apimart` | Force provider (default: auto-detect) |
+| `--model <id>`, `-m` | Model ID (Google: `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`; OpenAI: `gpt-image-1.5`, `gpt-image-1`; APIMart: `gemini-3-pro-image-preview`, `doubao-seedream-5-0-lite`) |
 | `--ar <ratio>` | Aspect ratio (e.g., `16:9`, `1:1`, `4:3`) |
 | `--size <WxH>` | Size (e.g., `1024x1024`) |
-| `--quality normal\|2k` | Quality preset (default: 2k) |
-| `--imageSize 1K\|2K\|4K` | Image size hint for Google/APIMart (APIMart maps to `resolution`) |
-| `--ref <files...>` | Reference images. Supported by Google multimodal (`gemini-3-pro-image-preview`, `gemini-3-flash-preview`, `gemini-3.1-flash-image-preview`), OpenAI edits (GPT Image models), Replicate and APIMart. If provider omitted: Google first, then OpenAI |
-| `--n <count>` | Number of images (APIMart currently supports only `1`) |
+| `--quality normal\|2k` | Quality preset (default: `2k`) |
+| `--imageSize 1K\|2K\|4K` | Image size for Google/APIMart (default: from quality) |
+| `--ref <files...>` | Reference images. Supported by Google multimodal, OpenAI GPT Image edits, Replicate, and APIMart |
+| `--n <count>` | Number of images for the current task (APIMart currently supports only `1`) |
 | `--json` | JSON output |
 
 ## Environment Variables
@@ -120,6 +174,9 @@ npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cinematic mountain sunrise" 
 | `REPLICATE_BASE_URL` | Custom Replicate endpoint |
 | `APIMART_BASE_URL` | Custom APIMart endpoint (default: https://api.apimart.ai) |
 | `APIMART_TASK_LANGUAGE` | Task status language for polling (default: en) |
+| `BAOYU_IMAGE_GEN_MAX_WORKERS` | Override batch worker cap |
+| `BAOYU_IMAGE_GEN_<PROVIDER>_CONCURRENCY` | Override provider concurrency, e.g. `BAOYU_IMAGE_GEN_REPLICATE_CONCURRENCY` |
+| `BAOYU_IMAGE_GEN_<PROVIDER>_START_INTERVAL_MS` | Override provider start gap, e.g. `BAOYU_IMAGE_GEN_REPLICATE_START_INTERVAL_MS` |
 
 **Load Priority**: CLI args > EXTEND.md > env vars > `<cwd>/.baoyu-skills/.env` > `~/.baoyu-skills/.env`
 
@@ -149,10 +206,10 @@ Examples:
 
 ```bash
 # Use Replicate default model
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat" --image out.png --provider replicate
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A cat" --image out.png --provider replicate
 
 # Override model explicitly
-npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat" --image out.png --provider replicate --model google/nano-banana
+${BUN_X} {baseDir}/scripts/main.ts --prompt "A cat" --image out.png --provider replicate --model google/nano-banana
 ```
 
 ## Provider Selection
@@ -164,10 +221,10 @@ npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat" --image out.png --provi
 
 ## Quality Presets
 
-| Preset | Google imageSize | OpenAI Size | Use Case |
-|--------|------------------|-------------|----------|
-| `normal` | 1K | 1024px | Quick previews |
-| `2k` (default) | 2K | 2048px | Covers, illustrations, infographics |
+| Preset | Google imageSize | OpenAI Size | Replicate resolution | Use Case |
+|--------|------------------|-------------|----------------------|----------|
+| `normal` | 1K | 1024px | 1K | Quick previews |
+| `2k` (default) | 2K | 2048px | 2K | Covers, illustrations, infographics |
 
 **Google/APIMart imageSize**: Can be overridden with `--imageSize 1K|2K|4K`
 
@@ -176,39 +233,46 @@ npx -y bun ${SKILL_DIR}/scripts/main.ts --prompt "A cat" --image out.png --provi
 Supported: `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `2.35:1`
 
 - Google multimodal: uses `imageConfig.aspectRatio`
-- Google Imagen: uses `aspectRatio` parameter
 - OpenAI: maps to closest supported size
+- Replicate: passes `aspect_ratio` to model; when `--ref` is provided without `--ar`, defaults to `match_input_image`
 
 ## Generation Mode
 
-**Default**: Sequential generation (one image at a time). This ensures stable output and easier debugging.
+**Default**: Sequential generation.
 
-**Parallel Generation**: Only use when user explicitly requests parallel/concurrent generation.
+**Batch Parallel Generation**: When `--batchfile` contains 2 or more pending tasks, the script automatically enables parallel generation.
 
 | Mode | When to Use |
 |------|-------------|
 | Sequential (default) | Normal usage, single images, small batches |
-| Parallel | User explicitly requests, large batches (10+) |
+| Parallel batch | Batch mode with 2+ tasks |
 
-**Parallel Settings** (when requested):
+Execution choice:
 
-| Setting | Value |
-|---------|-------|
-| Recommended concurrency | 4 subagents |
-| Max concurrency | 8 subagents |
-| Use case | Large batch generation when user requests parallel |
+| Situation | Preferred approach | Why |
+|-----------|--------------------|-----|
+| One image, or 1-2 simple images | Sequential | Lower coordination overhead and easier debugging |
+| Multiple images already have saved prompt files | Batch (`--batchfile`) | Reuses finalized prompts, applies shared throttling/retries, and gives predictable throughput |
+| Each image still needs separate reasoning, prompt writing, or style exploration | Subagents | The work is still exploratory, so each image may need independent analysis before generation |
+| Output comes from `baoyu-article-illustrator` with `outline.md` + `prompts/` | Batch (`build-batch.ts` -> `--batchfile`) | That workflow already produces prompt files, so direct batch execution is the intended path |
 
-**Agent Implementation** (parallel mode only):
-```
-# Launch multiple generations in parallel using Task tool
-# Each Task runs as background subagent with run_in_background=true
-# Collect results via TaskOutput when all complete
-```
+Rule of thumb:
+
+- Prefer batch over subagents once prompt files are already saved and the task is "generate all of these"
+- Use subagents only when generation is coupled with per-image thinking, rewriting, or divergent creative exploration
+
+Parallel behavior:
+
+- Default worker count is automatic, capped by config, built-in default 10
+- Provider-specific throttling is applied only in batch mode, and the built-in defaults are tuned for faster throughput while still avoiding obvious RPM bursts
+- You can override worker count with `--jobs <count>`
+- Each image retries automatically up to 3 attempts
+- Final output includes success count, failure count, and per-image failure reasons
 
 ## Error Handling
 
 - Missing API key → error with setup instructions
-- Generation failure → auto-retry once
+- Generation failure → auto-retry up to 3 attempts per image
 - Invalid aspect ratio → warning, proceed with default
 - Reference images with unsupported provider/model → error with fix hint (switch to Google multimodal: `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`; OpenAI GPT Image edits; Replicate; or APIMart)
 

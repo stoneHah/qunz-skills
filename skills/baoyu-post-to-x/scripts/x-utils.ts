@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -69,9 +69,26 @@ export function findChromeExecutable(candidates: PlatformCandidates): string | u
   return undefined;
 }
 
+let _wslHome: string | null | undefined;
+function getWslWindowsHome(): string | null {
+  if (_wslHome !== undefined) return _wslHome;
+  if (!process.env.WSL_DISTRO_NAME) { _wslHome = null; return null; }
+  try {
+    const raw = execSync('cmd.exe /C "echo %USERPROFILE%"', { encoding: 'utf-8', timeout: 5000 }).trim().replace(/\r/g, '');
+    _wslHome = execSync(`wslpath -u "${raw}"`, { encoding: 'utf-8', timeout: 5000 }).trim() || null;
+  } catch { _wslHome = null; }
+  return _wslHome;
+}
+
 export function getDefaultProfileDir(): string {
-  const base = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
-  return path.join(base, 'x-browser-profile');
+  const override = process.env.BAOYU_CHROME_PROFILE_DIR?.trim() || process.env.X_BROWSER_PROFILE_DIR?.trim();
+  if (override) return path.resolve(override);
+  const wslHome = getWslWindowsHome();
+  if (wslHome) return path.join(wslHome, '.local', 'share', 'baoyu-skills', 'chrome-profile');
+  const base = process.platform === 'darwin'
+    ? path.join(os.homedir(), 'Library', 'Application Support')
+    : process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
+  return path.join(base, 'baoyu-skills', 'chrome-profile');
 }
 
 export function sleep(ms: number): Promise<void> {
@@ -79,6 +96,8 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export async function getFreePort(): Promise<number> {
+  const fixed = parseInt(process.env.X_BROWSER_DEBUG_PORT || '', 10);
+  if (fixed > 0) return fixed;
   return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.unref();

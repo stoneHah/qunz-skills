@@ -187,20 +187,13 @@ export async function postToX(options: XBrowserOptions): Promise<void> {
       await sleep(2000);
       console.log('[x-browser] Post submitted!');
     } else {
-      console.log('[x-browser] Post composed (preview mode). Add --submit to post.');
-      console.log('[x-browser] Browser will stay open for 30 seconds for preview...');
-      await sleep(30_000);
+      console.log('[x-browser] Post composed. Please review and click the publish button in the browser.');
     }
   } finally {
     if (cdp) {
-      try { await cdp.send('Browser.close', {}, { timeoutMs: 5_000 }); } catch {}
       cdp.close();
     }
-
-    setTimeout(() => {
-      if (!chrome.killed) try { chrome.kill('SIGKILL'); } catch {}
-    }, 2_000).unref?.();
-    try { chrome.kill('SIGTERM'); } catch {}
+    chrome.unref();
   }
 }
 

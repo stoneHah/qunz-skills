@@ -4,7 +4,8 @@ import path from "node:path";
 import process from "node:process";
 
 import { CdpConnection, getFreePort, launchChrome, waitForChromeDebugPort, waitForNetworkIdle, waitForPageLoad, autoScroll, evaluateScript, killChrome } from "./cdp.js";
-import { cleanupAndExtractScript, htmlToMarkdown, createMarkdownDocument, type PageMetadata, type ConversionResult } from "./html-to-markdown.js";
+import { absolutizeUrlsScript, extractContent, createMarkdownDocument, type ConversionResult } from "./html-to-markdown.js";
+import { localizeMarkdownMedia, countRemoteMedia } from "./media-localizer.js";
 import { resolveUrlToMarkdownDataDir } from "./paths.js";
 import { DEFAULT_TIMEOUT_MS, CDP_CONNECT_TIMEOUT_MS, NETWORK_IDLE_TIMEOUT_MS, POST_LOAD_DELAY_MS, SCROLL_STEP_WAIT_MS, SCROLL_MAX_STEPS } from "./constants.js";
 
@@ -24,12 +25,14 @@ async function fileExists(filePath: string): Promise<boolean> {
 interface Args {
   url: string;
   output?: string;
+  outputDir?: string;
   wait: boolean;
   timeout: number;
+  downloadMedia: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { url: "", wait: false, timeout: DEFAULT_TIMEOUT_MS };
+  const args: Args = { url: "", wait: false, timeout: DEFAULT_TIMEOUT_MS, downloadMedia: false };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--wait" || arg === "-w") {
@@ -38,6 +41,10 @@ function parseArgs(argv: string[]): Args {
       args.output = argv[++i];
     } else if (arg === "--timeout" || arg === "-t") {
       args.timeout = parseInt(argv[++i], 10) || DEFAULT_TIMEOUT_MS;
+    } else if (arg === "--output-dir") {
+      args.outputDir = argv[++i];
+    } else if (arg === "--download-media") {
+      args.downloadMedia = true;
     } else if (!arg.startsWith("-") && !args.url) {
       args.url = arg;
     }
@@ -62,10 +69,16 @@ function formatTimestamp(): string {
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 }
 
-async function generateOutputPath(url: string, title: string): Promise<string> {
+function deriveHtmlSnapshotPath(markdownPath: string): string {
+  const parsed = path.parse(markdownPath);
+  const basename = parsed.ext ? parsed.name : parsed.base;
+  return path.join(parsed.dir, `${basename}-captured.html`);
+}
+
+async function generateOutputPath(url: string, title: string, outputDir?: string): Promise<string> {
   const domain = new URL(url).hostname.replace(/^www\./, "");
   const slug = generateSlug(title, url);
-  const dataDir = resolveUrlToMarkdownDataDir();
+  const dataDir = outputDir ? path.resolve(outputDir) : resolveUrlToMarkdownDataDir();
   const basePath = path.join(dataDir, domain, `${slug}.md`);
 
   if (!(await fileExists(basePath))) {
@@ -117,21 +130,11 @@ async function captureUrl(args: Args): Promise<ConversionResult> {
     }
 
     console.log("Capturing page content...");
-    const extracted = await evaluateScript<{ title: string; description?: string; author?: string; published?: string; html: string }>(
-      cdp, sessionId, cleanupAndExtractScript, args.timeout
+    const { html } = await evaluateScript<{ html: string }>(
+      cdp, sessionId, absolutizeUrlsScript, args.timeout
     );
 
-    const metadata: PageMetadata = {
-      url: args.url,
-      title: extracted.title || "",
-      description: extracted.description,
-      author: extracted.author,
-      published: extracted.published,
-      captured_at: new Date().toISOString()
-    };
-
-    const markdown = htmlToMarkdown(extracted.html);
-    return { metadata, markdown };
+    return await extractContent(html, args.url);
   } finally {
     if (cdp) {
       try { await cdp.send("Browser.close", {}, { timeoutMs: 5_000 }); } catch {}
@@ -144,7 +147,7 @@ async function captureUrl(args: Args): Promise<ConversionResult> {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv);
   if (!args.url) {
-    console.error("Usage: bun main.ts <url> [-o output.md] [--wait] [--timeout ms]");
+    console.error("Usage: bun main.ts <url> [-o output.md] [--output-dir dir] [--wait] [--timeout ms] [--download-media]");
     process.exit(1);
   }
 
@@ -155,19 +158,51 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  if (args.output) {
+    const stat = await import("node:fs").then(fs => fs.statSync(args.output!, { throwIfNoEntry: false }));
+    if (stat?.isDirectory()) {
+      console.error(`Error: -o path is a directory, not a file: ${args.output}`);
+      process.exit(1);
+    }
+  }
+
   console.log(`Fetching: ${args.url}`);
   console.log(`Mode: ${args.wait ? "wait" : "auto"}`);
 
   const result = await captureUrl(args);
-  const outputPath = args.output || await generateOutputPath(args.url, result.metadata.title);
+  const outputPath = args.output || await generateOutputPath(args.url, result.metadata.title, args.outputDir);
   const outputDir = path.dirname(outputPath);
+  const htmlSnapshotPath = deriveHtmlSnapshotPath(outputPath);
   await mkdir(outputDir, { recursive: true });
+  await writeFile(htmlSnapshotPath, result.rawHtml, "utf-8");
 
-  const document = createMarkdownDocument(result);
+  let document = createMarkdownDocument(result);
+
+  if (args.downloadMedia) {
+    const mediaResult = await localizeMarkdownMedia(document, {
+      markdownPath: outputPath,
+      log: console.log,
+    });
+    document = mediaResult.markdown;
+    if (mediaResult.downloadedImages > 0 || mediaResult.downloadedVideos > 0) {
+      console.log(`Downloaded: ${mediaResult.downloadedImages} images, ${mediaResult.downloadedVideos} videos`);
+    }
+  } else {
+    const { images, videos } = countRemoteMedia(document);
+    if (images > 0 || videos > 0) {
+      console.log(`Remote media found: ${images} images, ${videos} videos`);
+    }
+  }
+
   await writeFile(outputPath, document, "utf-8");
 
   console.log(`Saved: ${outputPath}`);
+  console.log(`Saved HTML: ${htmlSnapshotPath}`);
   console.log(`Title: ${result.metadata.title || "(no title)"}`);
+  console.log(`Converter: ${result.conversionMethod}`);
+  if (result.fallbackReason) {
+    console.warn(`Fallback used: ${result.fallbackReason}`);
+  }
 }
 
 main().catch((err) => {

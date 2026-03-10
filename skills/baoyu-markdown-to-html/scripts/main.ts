@@ -122,11 +122,15 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, string
   return { frontmatter, body: match[2]! };
 }
 
-export async function convertMarkdown(markdownPath: string, options?: { title?: string; theme?: string; keepTitle?: boolean }): Promise<ParsedResult> {
+export async function convertMarkdown(
+  markdownPath: string,
+  options?: { title?: string; theme?: string; keepTitle?: boolean; citeStatus?: boolean }
+): Promise<ParsedResult> {
   const baseDir = path.dirname(markdownPath);
   const content = fs.readFileSync(markdownPath, 'utf-8');
   const theme = options?.theme ?? 'default';
   const keepTitle = options?.keepTitle ?? false;
+  const citeStatus = options?.citeStatus ?? false;
 
   const { frontmatter, body } = parseFrontmatter(content);
 
@@ -191,7 +195,7 @@ export async function convertMarkdown(markdownPath: string, options?: { title?: 
 
   const modifiedMarkdown = `---\n${Object.entries(frontmatter).map(([k, v]) => `${k}: ${v}`).join('\n')}\n---\n${modifiedBody}`;
 
-  console.error(`[markdown-to-html] Rendering with theme: ${theme}, keepTitle: ${keepTitle}`);
+  console.error(`[markdown-to-html] Rendering with theme: ${theme}, keepTitle: ${keepTitle}, citeStatus: ${citeStatus}`);
 
   const themeDefaults = THEME_STYLE_DEFAULTS[theme] ?? {};
   const style: StyleConfig = { ...DEFAULT_STYLE, ...themeDefaults };
@@ -199,7 +203,7 @@ export async function convertMarkdown(markdownPath: string, options?: { title?: 
   const css = normalizeThemeCss(buildCss(baseCss, themeCss, style));
   const codeThemeCss = loadCodeThemeCss('github');
 
-  const renderer = initRenderer({});
+  const renderer = initRenderer({ citeStatus });
   const { html: baseHtml, readingTime } = renderMarkdown(modifiedMarkdown, renderer);
   let htmlContent = postProcessHtml(baseHtml, readingTime, renderer);
   if (!keepTitle) htmlContent = removeFirstHeading(htmlContent);
@@ -263,6 +267,7 @@ Usage:
 Options:
   --title <title>     Override title
   --theme <name>      Theme name (default, grace, simple). Default: default
+  --cite              Convert ordinary external links to bottom citations. Default: off
   --keep-title        Keep the first heading in content. Default: false (removed)
   --help              Show this help
 
@@ -284,6 +289,7 @@ Output JSON format:
 Example:
   npx -y bun main.ts article.md
   npx -y bun main.ts article.md --theme grace
+  npx -y bun main.ts article.md --cite
 `);
   process.exit(0);
 }
@@ -297,6 +303,7 @@ async function main(): Promise<void> {
   let markdownPath: string | undefined;
   let title: string | undefined;
   let theme: string | undefined;
+  let citeStatus = false;
   let keepTitle = false;
 
   for (let i = 0; i < args.length; i++) {
@@ -305,6 +312,8 @@ async function main(): Promise<void> {
       title = args[++i];
     } else if (arg === '--theme' && args[i + 1]) {
       theme = args[++i];
+    } else if (arg === '--cite') {
+      citeStatus = true;
     } else if (arg === '--keep-title') {
       keepTitle = true;
     } else if (!arg.startsWith('-')) {
@@ -322,7 +331,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const result = await convertMarkdown(markdownPath, { title, theme, keepTitle });
+  const result = await convertMarkdown(markdownPath, { title, theme, keepTitle, citeStatus });
   console.log(JSON.stringify(result, null, 2));
 }
 

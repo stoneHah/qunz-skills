@@ -50,16 +50,16 @@ Just run `/release-skills` - auto-detects your project configuration.
 
 **Language Detection Rules**:
 
-| Filename Pattern | Language |
-|------------------|----------|
-| `CHANGELOG.md` (no suffix) | en (default) |
-| `CHANGELOG.zh.md` / `CHANGELOG_CN.md` / `CHANGELOG.zh-CN.md` | zh |
-| `CHANGELOG.ja.md` / `CHANGELOG_JP.md` | ja |
-| `CHANGELOG.ko.md` / `CHANGELOG_KR.md` | ko |
-| `CHANGELOG.de.md` / `CHANGELOG_DE.md` | de |
-| `CHANGELOG.fr.md` / `CHANGELOG_FR.md` | fr |
-| `CHANGELOG.es.md` / `CHANGELOG_ES.md` | es |
-| `CHANGELOG.{lang}.md` | Corresponding language code |
+Changelog files follow the pattern `CHANGELOG_{LANG}.md` or `CHANGELOG.{lang}.md`, where `{lang}` / `{LANG}` is a language or region code.
+
+| Pattern | Example | Language |
+|---------|---------|----------|
+| No suffix | `CHANGELOG.md` | en (default) |
+| `_{LANG}` (uppercase) | `CHANGELOG_CN.md`, `CHANGELOG_JP.md` | Corresponding language |
+| `.{lang}` (lowercase) | `CHANGELOG.zh.md`, `CHANGELOG.ja.md` | Corresponding language |
+| `.{lang-region}` | `CHANGELOG.zh-CN.md` | Corresponding region variant |
+
+Common language codes: `zh` (Chinese), `ja` (Japanese), `ko` (Korean), `de` (German), `fr` (French), `es` (Spanish).
 
 **Output Example**:
 ```

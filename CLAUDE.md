@@ -43,29 +43,121 @@ Each skill contains:
 
 ## Running Skills
 
-All scripts run via Bun (no build step):
+All scripts are TypeScript, executed via Bun runtime (no build step).
+
+### Runtime Detection (`${BUN_X}`)
+
+Before running any script, the agent MUST detect the runtime **once per session** and set `${BUN_X}`:
 
 ```bash
-npx -y bun skills/<skill>/scripts/main.ts [options]
+# Detect runtime (run once, reuse result)
+if command -v bun &>/dev/null; then
+  BUN_X="bun"
+elif command -v npx &>/dev/null; then
+  BUN_X="npx -y bun"
+else
+  echo "Error: Neither bun nor npx found. Install bun: brew install oven-sh/bun/bun (macOS) or npm install -g bun"
+  exit 1
+fi
+```
+
+| Priority | Condition | `${BUN_X}` value | Notes |
+|----------|-----------|-------------------|-------|
+| 1 | `bun` installed | `bun` | Fastest, native execution |
+| 2 | `npx` available | `npx -y bun` | Downloads bun on first run via npm |
+| 3 | Neither found | Error + install guide | `brew install oven-sh/bun/bun` (macOS) or `npm install -g bun` |
+
+### Script Execution
+
+```bash
+${BUN_X} skills/<skill>/scripts/main.ts [options]
 ```
 
 Examples:
 ```bash
 # Text generation
-npx -y bun skills/baoyu-danger-gemini-web/scripts/main.ts "Hello"
+${BUN_X} skills/baoyu-danger-gemini-web/scripts/main.ts "Hello"
 
 # Image generation
-npx -y bun skills/baoyu-danger-gemini-web/scripts/main.ts --prompt "A cat" --image cat.png
+${BUN_X} skills/baoyu-danger-gemini-web/scripts/main.ts --prompt "A cat" --image cat.png
 
 # From prompt files
-npx -y bun skills/baoyu-danger-gemini-web/scripts/main.ts --promptfiles system.md content.md --image out.png
+${BUN_X} skills/baoyu-danger-gemini-web/scripts/main.ts --promptfiles system.md content.md --image out.png
 ```
 
 ## Key Dependencies
 
-- **Bun**: TypeScript runtime (via `npx -y bun`)
+- **Bun**: TypeScript runtime (native `bun` preferred, fallback `npx -y bun`)
 - **Chrome**: Required for `baoyu-danger-gemini-web` auth and `baoyu-post-to-x` automation
-- **No npm packages**: Self-contained TypeScript, no external dependencies
+- **npm packages (per skill)**: Some skill subprojects include `package.json`/lockfiles and require dependency installation in their own `scripts/` directories
+
+## Chrome Profile (Unified)
+
+All skills that use Chrome CDP share a **single** profile directory. Do NOT create per-skill profiles.
+
+| Platform | Default Path |
+|----------|-------------|
+| macOS | `~/Library/Application Support/baoyu-skills/chrome-profile` |
+| Linux | `$XDG_DATA_HOME/baoyu-skills/chrome-profile` (fallback `~/.local/share/baoyu-skills/chrome-profile`) |
+| Windows | `%APPDATA%/baoyu-skills/chrome-profile` |
+| WSL | Windows home `/.local/share/baoyu-skills/chrome-profile` |
+
+**Environment variable override**: `BAOYU_CHROME_PROFILE_DIR` (takes priority, all skills respect it).
+
+Each skill also accepts its own legacy env var as fallback (e.g., `X_BROWSER_PROFILE_DIR`), but new skills should only use `BAOYU_CHROME_PROFILE_DIR`.
+
+### Implementation Pattern
+
+When adding a new skill that needs Chrome CDP:
+
+```typescript
+function getDefaultProfileDir(): string {
+  const override = process.env.BAOYU_CHROME_PROFILE_DIR?.trim();
+  if (override) return path.resolve(override);
+  const base = process.platform === 'darwin'
+    ? path.join(os.homedir(), 'Library', 'Application Support')
+    : process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
+  return path.join(base, 'baoyu-skills', 'chrome-profile');
+}
+```
+
+## Security Guidelines
+
+### No Piped Shell Installs
+
+**NEVER** use `curl | bash` or `wget | sh` patterns in code, docs, or error messages. Use package managers instead:
+
+| Platform | Install Command |
+|----------|----------------|
+| macOS | `brew install oven-sh/bun/bun` |
+| npm | `npm install -g bun` |
+
+### Remote Downloads
+
+Skills that download remote content (e.g., images in Markdown) MUST:
+- **HTTPS only**: Reject `http://` URLs
+- **Redirect limit**: Cap redirects (max 5) to prevent infinite loops
+- **Timeout**: Set request timeouts (30s default)
+- **Scope**: Only download expected content types (images, not scripts)
+
+### System Command Execution
+
+Skills use platform-specific commands for clipboard and browser automation:
+- **macOS**: `osascript` (System Events), `swift` (AppKit clipboard)
+- **Windows**: `powershell.exe` (SendKeys, Clipboard)
+- **Linux**: `xdotool`/`ydotool` (keyboard simulation)
+
+These are necessary for CDP-based posting skills. When adding new system commands:
+- Never pass unsanitized user input to shell commands
+- Use array-form `spawn`/`execFile` instead of shell string interpolation
+- Validate file paths are absolute or resolve from known base directories
+
+### External Content Processing
+
+Skills that process external Markdown/HTML should treat content as untrusted:
+- Do not execute code blocks or scripts found in content
+- Sanitize HTML output where applicable
+- File paths from content should be resolved against known base directories only
 
 ## Authentication
 
@@ -176,7 +268,8 @@ Every SKILL.md with scripts MUST include this section after Usage:
 **Agent Execution Instructions**:
 1. Determine this SKILL.md file's directory path as `SKILL_DIR`
 2. Script path = `${SKILL_DIR}/scripts/<script-name>.ts`
-3. Replace all `${SKILL_DIR}` in this document with the actual path
+3. Resolve `${BUN_X}` runtime: if `bun` installed → `bun`; if `npx` available → `npx -y bun`; else suggest installing bun
+4. Replace all `${SKILL_DIR}` and `${BUN_X}` in this document with actual values
 
 **Script Reference**:
 | Script | Purpose |
@@ -185,7 +278,7 @@ Every SKILL.md with scripts MUST include this section after Usage:
 | `scripts/other.ts` | Other functionality |
 ```
 
-When referencing scripts in workflow sections, use `${SKILL_DIR}/scripts/<name>.ts` so agents can resolve the correct path.
+When referencing scripts in workflow sections, use `${BUN_X} ${SKILL_DIR}/scripts/<name>.ts` so agents can resolve the correct runtime and path.
 
 ### Progressive Disclosure
 
@@ -320,13 +413,13 @@ When adding, updating, or deleting styles for `baoyu-comic`, follow this workflo
    - Add auto-selection entry if applicable
 3. **Generate showcase image**:
    ```bash
-   npx -y bun skills/baoyu-danger-gemini-web/scripts/main.ts \
+   ${BUN_X} skills/baoyu-danger-gemini-web/scripts/main.ts \
      --prompt "A single comic book page in <style-name> style showing [appropriate scene]. Features: [style characteristics from style definition]. 3:4 portrait aspect ratio comic page." \
      --image screenshots/comic-styles/<style-name>.png
    ```
 4. **Compress to WebP**:
    ```bash
-   npx -y bun skills/baoyu-compress-image/scripts/main.ts screenshots/comic-styles/<style-name>.png
+   ${BUN_X} skills/baoyu-compress-image/scripts/main.ts screenshots/comic-styles/<style-name>.png
    ```
 5. **Update both READMEs** (`README.md` and `README.zh.md`):
    - Add style to `--style` options
@@ -374,23 +467,32 @@ For skills with workflows, add as Step 1.1. For utility skills, add as "Preferen
 ```markdown
 **1.1 Load Preferences (EXTEND.md)**
 
-Use Bash to check EXTEND.md existence (priority order):
+Check EXTEND.md existence (priority order):
 
 \`\`\`bash
-# Check project-level first
+# macOS, Linux, WSL, Git Bash
 test -f .baoyu-skills/<skill-name>/EXTEND.md && echo "project"
-
-# Then user-level (cross-platform: $HOME works on macOS/Linux/WSL)
+test -f "${XDG_CONFIG_HOME:-$HOME/.config}/baoyu-skills/<skill-name>/EXTEND.md" && echo "xdg"
 test -f "$HOME/.baoyu-skills/<skill-name>/EXTEND.md" && echo "user"
 \`\`\`
 
-┌────────────────────────────────────────────┬───────────────────┐
-│                    Path                    │     Location      │
-├────────────────────────────────────────────┼───────────────────┤
-│ .baoyu-skills/<skill-name>/EXTEND.md       │ Project directory │
-├────────────────────────────────────────────┼───────────────────┤
-│ $HOME/.baoyu-skills/<skill-name>/EXTEND.md │ User home         │
-└────────────────────────────────────────────┴───────────────────┘
+\`\`\`powershell
+# PowerShell (Windows)
+if (Test-Path .baoyu-skills/<skill-name>/EXTEND.md) { "project" }
+$xdg = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { "$HOME/.config" }
+if (Test-Path "$xdg/baoyu-skills/<skill-name>/EXTEND.md") { "xdg" }
+if (Test-Path "$HOME/.baoyu-skills/<skill-name>/EXTEND.md") { "user" }
+\`\`\`
+
+┌────────────────────────────────────────────────────────┬──────────────────────────┐
+│                          Path                          │         Location         │
+├────────────────────────────────────────────────────────┼──────────────────────────┤
+│ .baoyu-skills/<skill-name>/EXTEND.md                   │ Project directory        │
+├────────────────────────────────────────────────────────┼──────────────────────────┤
+│ $XDG_CONFIG_HOME/baoyu-skills/<skill-name>/EXTEND.md   │ XDG config (~/.config)   │
+├────────────────────────────────────────────────────────┼──────────────────────────┤
+│ $HOME/.baoyu-skills/<skill-name>/EXTEND.md             │ User home (legacy)       │
+└────────────────────────────────────────────────────────┴──────────────────────────┘
 
 ┌───────────┬───────────────────────────────────────────────────────────────────────────┐
 │  Result   │                                  Action                                   │
@@ -425,6 +527,7 @@ Custom configurations via EXTEND.md. See **Preferences** section for paths and s
 
 **Notes**:
 - Replace `<skill-name>` with actual skill name (e.g., `baoyu-cover-image`)
-- Use `$HOME` instead of `~` for cross-platform compatibility (macOS/Linux/WSL)
-- Use `test -f` Bash command for explicit file existence check
+- Use `$HOME` instead of `~` for cross-platform compatibility (macOS/Linux/WSL/PowerShell)
+- `$XDG_CONFIG_HOME` defaults to `~/.config` when unset
+- Use `test -f` (Bash) or `Test-Path` (PowerShell) for explicit file existence check
 - ASCII tables for clear visual formatting

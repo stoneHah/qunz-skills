@@ -17,6 +17,27 @@ Skills shared by Baoyu for improving daily work efficiency with Claude Code.
 npx skills add stoneHah/qunz-skills
 ```
 
+### Publish to ClawHub / OpenClaw
+
+This repository now supports publishing each `skills/baoyu-*` directory as an individual ClawHub skill.
+
+```bash
+# Preview what would be published
+./scripts/sync-clawhub.sh --dry-run
+
+# Publish all changed skills from ./skills
+./scripts/sync-clawhub.sh --all
+```
+
+ClawHub installs skills individually, not as one marketplace bundle. After publishing, users can install specific skills such as:
+
+```bash
+clawhub install baoyu-image-gen
+clawhub install baoyu-markdown-to-html
+```
+
+Publishing to ClawHub releases the published skill under `MIT-0`, per ClawHub's registry rules.
+
 ### Register as Plugin Marketplace
 
 Run the following command in Claude Code:
@@ -53,9 +74,9 @@ Simply tell Claude Code:
 
 | Plugin | Description | Skills |
 |--------|-------------|--------|
-| **content-skills** | Content generation and publishing | [xhs-images](#baoyu-xhs-images), [infographic](#baoyu-infographic), [cover-image](#baoyu-cover-image), [slide-deck](#baoyu-slide-deck), [comic](#baoyu-comic), [article-illustrator](#baoyu-article-illustrator), [post-to-x](#baoyu-post-to-x), [post-to-wechat](#baoyu-post-to-wechat) |
+| **content-skills** | Content generation and publishing | [xhs-images](#baoyu-xhs-images), [infographic](#baoyu-infographic), [cover-image](#baoyu-cover-image), [slide-deck](#baoyu-slide-deck), [comic](#baoyu-comic), [article-illustrator](#baoyu-article-illustrator), [post-to-x](#baoyu-post-to-x), [post-to-wechat](#baoyu-post-to-wechat), [post-to-weibo](#baoyu-post-to-weibo) |
 | **ai-generation-skills** | AI-powered generation backends | [image-gen](#baoyu-image-gen), [danger-gemini-web](#baoyu-danger-gemini-web) |
-| **utility-skills** | Utility tools for content processing | [url-to-markdown](#baoyu-url-to-markdown), [danger-x-to-markdown](#baoyu-danger-x-to-markdown), [compress-image](#baoyu-compress-image), [format-markdown](#baoyu-format-markdown) |
+| **utility-skills** | Utility tools for content processing | [url-to-markdown](#baoyu-url-to-markdown), [danger-x-to-markdown](#baoyu-danger-x-to-markdown), [compress-image](#baoyu-compress-image), [format-markdown](#baoyu-format-markdown), [markdown-to-html](#baoyu-markdown-to-html), [translate](#baoyu-translate) |
 
 ## Update Skills
 
@@ -504,6 +525,8 @@ Smart article illustration skill with Type × Style two-dimension approach. Anal
 
 Post content and articles to X (Twitter). Supports regular posts with images and X Articles (long-form Markdown). Uses real Chrome with CDP to bypass anti-automation.
 
+Plain text input is treated as a regular post. Markdown files are treated as X Articles. Scripts fill content into the browser, and the user reviews and publishes manually.
+
 ```bash
 # Post with text
 /baoyu-post-to-x "Hello from Claude Code!"
@@ -557,6 +580,42 @@ To obtain credentials:
 4. Add your machine's IP to the whitelist
 
 **Browser Method** (no API setup needed): Requires Google Chrome. First run opens browser for QR code login (session preserved).
+
+#### baoyu-post-to-weibo
+
+Post content to Weibo (微博). Supports regular posts with text, images, and videos, and headline articles (头条文章) with Markdown input. Uses real Chrome with CDP to bypass anti-automation.
+
+**Regular Posts** - Text + images/videos (max 18 files):
+
+```bash
+# Post with text
+/baoyu-post-to-weibo "Hello Weibo!"
+
+# Post with images
+/baoyu-post-to-weibo "Check this out" --image photo.png
+
+# Post with video
+/baoyu-post-to-weibo "Watch this" --video clip.mp4
+```
+
+**Headline Articles (头条文章)** - Long-form Markdown:
+
+```bash
+# Publish article
+/baoyu-post-to-weibo --article article.md
+
+# With cover image
+/baoyu-post-to-weibo --article article.md --cover cover.jpg
+```
+
+**Article Options**:
+| Option | Description |
+|--------|-------------|
+| `--cover <path>` | Cover image |
+| `--title <text>` | Override title (max 32 chars) |
+| `--summary <text>` | Override summary (max 44 chars) |
+
+**Note**: Scripts fill content into the browser. User reviews and publishes manually. First run requires manual Weibo login (session persists).
 
 ### AI Generation Skills
 
@@ -641,7 +700,7 @@ Utility tools for content processing.
 
 #### baoyu-url-to-markdown
 
-Fetch any URL via Chrome CDP and convert to clean markdown. Supports two capture modes for different scenarios.
+Fetch any URL via Chrome CDP and convert to clean markdown. Saves rendered HTML snapshot alongside the markdown, and automatically falls back to a legacy extractor when Defuddle fails.
 
 ```bash
 # Auto mode (default) - capture when page loads
@@ -738,6 +797,101 @@ Format plain text or markdown files with proper frontmatter, titles, summaries, 
 | Parallel items | `-` unordered or `1.` ordered lists |
 | Code/commands | `` `inline` `` or ` ```block``` ` |
 | Quotes | `>` blockquote |
+
+#### baoyu-markdown-to-html
+
+Convert markdown files into styled HTML with WeChat-compatible themes, syntax highlighting, and optional bottom citations for external links.
+
+```bash
+# Basic conversion
+/baoyu-markdown-to-html article.md
+
+# Theme + color
+/baoyu-markdown-to-html article.md --theme grace --color red
+
+# Convert ordinary external links to bottom citations
+/baoyu-markdown-to-html article.md --cite
+```
+
+#### baoyu-translate
+
+Translate articles and documents between languages with three modes: quick (direct), normal (analysis-informed), and refined (full publication-quality workflow with review and polish).
+
+```bash
+# Normal mode (default) - analyze then translate
+/translate article.md --to zh-CN
+
+# Quick mode - direct translation
+/translate article.md --mode quick --to ja
+
+# Refined mode - full workflow with review and polish
+/translate article.md --mode refined --to zh-CN
+
+# Translate a URL
+/translate https://example.com/article --to zh-CN
+
+# Specify audience
+/translate article.md --to zh-CN --audience technical
+
+# Specify style
+/translate article.md --to zh-CN --style humorous
+
+# With additional glossary
+/translate article.md --to zh-CN --glossary my-terms.md
+```
+
+**Options**:
+| Option | Description |
+|--------|-------------|
+| `<source>` | File path, URL, or inline text |
+| `--mode <mode>` | `quick`, `normal` (default), `refined` |
+| `--from <lang>` | Source language (auto-detect if omitted) |
+| `--to <lang>` | Target language (default: `zh-CN`) |
+| `--audience <type>` | Target reader profile (default: `general`) |
+| `--style <style>` | Translation style (default: `storytelling`) |
+| `--glossary <file>` | Additional glossary file |
+
+**Modes**:
+| Mode | Steps | Use Case |
+|------|-------|----------|
+| Quick | Translate | Short texts, informal content |
+| Normal | Analyze → Translate | Articles, blog posts |
+| Refined | Analyze → Translate → Review → Polish | Publication-quality documents |
+
+After normal mode completes, you can reply "继续润色" or "refine" to continue with review and polish steps.
+
+**Audience Presets**:
+| Value | Description |
+|-------|-------------|
+| `general` | General readers (default) — plain language, more translator's notes |
+| `technical` | Developers / engineers — less annotation on common tech terms |
+| `academic` | Researchers / scholars — formal register, precise terminology |
+| `business` | Business professionals — business-friendly tone |
+
+Custom audience descriptions are also accepted, e.g., `--audience "AI-interested general readers"`.
+
+**Style Presets**:
+| Value | Description |
+|-------|-------------|
+| `storytelling` | Engaging narrative flow (default) — smooth transitions, vivid phrasing |
+| `formal` | Professional, structured — neutral tone, no colloquialisms |
+| `technical` | Precise, documentation-style — concise, terminology-heavy |
+| `literal` | Close to original structure — minimal restructuring |
+| `academic` | Scholarly, rigorous — formal register, complex clauses OK |
+| `business` | Concise, results-focused — action-oriented, executive-friendly |
+| `humorous` | Preserves and adapts humor — witty, recreates comedic effect |
+| `conversational` | Casual, spoken-like — friendly, as if explaining to a friend |
+| `elegant` | Literary, polished prose — aesthetically refined, carefully crafted |
+
+Custom style descriptions are also accepted, e.g., `--style "poetic and lyrical"`.
+
+**Features**:
+- Custom glossaries via EXTEND.md with built-in EN→ZH glossary
+- Audience-aware translation with adjustable annotation depth
+- Automatic chunking for long documents (4000+ words) with parallel subagent translation
+- Figurative language interpreted by meaning, not word-for-word
+- Translator's notes for cultural/domain-specific references
+- Output directory with all intermediate files preserved
 
 ## Environment Configuration
 
@@ -842,6 +996,19 @@ This skill uses a reverse-engineered X (Twitter) API.
 - First use requires consent acknowledgment
 - Authentication via environment variables or Chrome login
 
+## Credits
+
+This project was inspired by and builds upon the following open source projects:
+
+- [x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill) by [@wshuyi](https://github.com/wshuyi) — Inspiration for the X article publishing skill
+- [doocs/md](https://github.com/doocs/md) by [@doocs](https://github.com/doocs) — Core implementation logic for Markdown to HTML conversion
+- [High-density Infographic Prompt](https://waytoagi.feishu.cn/wiki/YG0zwalijihRREkgmPzcWRInnUg) by AJ@WaytoAGI — Inspiration for the infographic skill
+- [qiaomu-mondo-poster-design](https://github.com/joeseesun/qiaomu-mondo-poster-design) by [@joeseesun](https://github.com/joeseesun)（乔木） — Inspiration for the Mondo style
+
 ## License
 
 MIT
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=JimLiu/baoyu-skills&type=Date)](https://www.star-history.com/#JimLiu/baoyu-skills&Date)

@@ -112,10 +112,14 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, string
   return { frontmatter, body: match[2]! };
 }
 
-export async function convertMarkdown(markdownPath: string, options?: { title?: string; theme?: string; color?: string }): Promise<ParsedResult> {
+export async function convertMarkdown(
+  markdownPath: string,
+  options?: { title?: string; theme?: string; color?: string; citeStatus?: boolean }
+): Promise<ParsedResult> {
   const baseDir = path.dirname(markdownPath);
   const content = fs.readFileSync(markdownPath, 'utf-8');
   const theme = options?.theme ?? 'default';
+  const citeStatus = options?.citeStatus ?? true;
 
   const { frontmatter, body } = parseFrontmatter(content);
 
@@ -185,8 +189,9 @@ export async function convertMarkdown(markdownPath: string, options?: { title?: 
 
   const renderArgs = ['-y', 'bun', renderScript, tempMdPath, '--theme', theme];
   if (options?.color) renderArgs.push('--color', options.color);
+  if (citeStatus) renderArgs.push('--cite');
 
-  console.error(`[md-to-wechat] Rendering markdown with theme: ${theme}${options?.color ? `, color: ${options.color}` : ''}`);
+  console.error(`[md-to-wechat] Rendering markdown with theme: ${theme}${options?.color ? `, color: ${options.color}` : ''}, citeStatus: ${citeStatus}`);
 
   const result = spawnSync('npx', renderArgs, {
     stdio: ['inherit', 'pipe', 'pipe'],
@@ -232,6 +237,7 @@ Options:
   --title <title>     Override title
   --theme <name>      Theme name (default, grace, simple, modern)
   --color <name|hex>  Primary color (blue, green, vermilion, etc. or hex)
+  --no-cite           Disable bottom citations for ordinary external links
   --help              Show this help
 
 Output JSON format:
@@ -251,6 +257,7 @@ Example:
   npx -y bun md-to-wechat.ts article.md
   npx -y bun md-to-wechat.ts article.md --theme grace
   npx -y bun md-to-wechat.ts article.md --theme modern --color blue
+  npx -y bun md-to-wechat.ts article.md --no-cite
 `);
   process.exit(0);
 }
@@ -265,6 +272,7 @@ async function main(): Promise<void> {
   let title: string | undefined;
   let theme: string | undefined;
   let color: string | undefined;
+  let citeStatus = true;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
@@ -274,6 +282,10 @@ async function main(): Promise<void> {
       theme = args[++i];
     } else if (arg === '--color' && args[i + 1]) {
       color = args[++i];
+    } else if (arg === '--cite') {
+      citeStatus = true;
+    } else if (arg === '--no-cite') {
+      citeStatus = false;
     } else if (!arg.startsWith('-')) {
       markdownPath = arg;
     }
@@ -289,7 +301,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const result = await convertMarkdown(markdownPath, { title, theme, color });
+  const result = await convertMarkdown(markdownPath, { title, theme, color, citeStatus });
   console.log(JSON.stringify(result, null, 2));
 }
 

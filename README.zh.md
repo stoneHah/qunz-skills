@@ -17,6 +17,27 @@
 npx skills add stoneHah/qunz-skills
 ```
 
+### 发布到 ClawHub / OpenClaw
+
+现在这个仓库支持把每个 `skills/baoyu-*` 目录作为独立 ClawHub skill 发布。
+
+```bash
+# 预览将要发布的变更
+./scripts/sync-clawhub.sh --dry-run
+
+# 发布 ./skills 下所有已变更的 skill
+./scripts/sync-clawhub.sh --all
+```
+
+ClawHub 按“单个 skill”安装，不是把整个 marketplace 一次性装进去。发布后，用户可以按需安装：
+
+```bash
+clawhub install baoyu-image-gen
+clawhub install baoyu-markdown-to-html
+```
+
+根据 ClawHub 的 registry 规则，发布到 ClawHub 的 skill 会以 `MIT-0` 许可分发。
+
 ### 注册插件市场
 
 在 Claude Code 中运行：
@@ -53,9 +74,9 @@ npx skills add stoneHah/qunz-skills
 
 | 插件 | 说明 | 包含技能 |
 |------|------|----------|
-| **content-skills** | 内容生成和发布 | [xhs-images](#baoyu-xhs-images), [infographic](#baoyu-infographic), [cover-image](#baoyu-cover-image), [slide-deck](#baoyu-slide-deck), [comic](#baoyu-comic), [article-illustrator](#baoyu-article-illustrator), [post-to-x](#baoyu-post-to-x), [post-to-wechat](#baoyu-post-to-wechat) |
+| **content-skills** | 内容生成和发布 | [xhs-images](#baoyu-xhs-images), [infographic](#baoyu-infographic), [cover-image](#baoyu-cover-image), [slide-deck](#baoyu-slide-deck), [comic](#baoyu-comic), [article-illustrator](#baoyu-article-illustrator), [post-to-x](#baoyu-post-to-x), [post-to-wechat](#baoyu-post-to-wechat), [post-to-weibo](#baoyu-post-to-weibo) |
 | **ai-generation-skills** | AI 生成后端 | [image-gen](#baoyu-image-gen), [danger-gemini-web](#baoyu-danger-gemini-web) |
-| **utility-skills** | 内容处理工具 | [url-to-markdown](#baoyu-url-to-markdown), [danger-x-to-markdown](#baoyu-danger-x-to-markdown), [compress-image](#baoyu-compress-image), [format-markdown](#baoyu-format-markdown) |
+| **utility-skills** | 内容处理工具 | [url-to-markdown](#baoyu-url-to-markdown), [danger-x-to-markdown](#baoyu-danger-x-to-markdown), [compress-image](#baoyu-compress-image), [format-markdown](#baoyu-format-markdown), [markdown-to-html](#baoyu-markdown-to-html), [translate](#baoyu-translate) |
 
 ## 更新技能
 
@@ -504,6 +525,8 @@ npx skills add stoneHah/qunz-skills
 
 发布内容和文章到 X (Twitter)。支持带图片的普通帖子和 X 文章（长篇 Markdown）。使用真实 Chrome + CDP 绕过反自动化检测。
 
+纯文本输入默认按普通帖子处理，Markdown 文件默认按 X 文章处理。脚本会将内容填入浏览器，用户需手动检查并发布。
+
 ```bash
 # 发布文字
 /baoyu-post-to-x "Hello from Claude Code!"
@@ -557,6 +580,42 @@ WECHAT_APP_SECRET=你的AppSecret
 4. 将你操作的机器 IP 加入白名单
 
 **浏览器方式**（无需 API 配置）：需已安装 Google Chrome，首次运行需扫码登录（登录状态会保存）
+
+#### baoyu-post-to-weibo
+
+发布内容到微博。支持文字、图片、视频发布和头条文章（长篇 Markdown）。使用真实 Chrome + CDP 绕过反自动化检测。
+
+**普通微博** - 文字 + 图片/视频（最多 18 个文件）：
+
+```bash
+# 发布文字
+/baoyu-post-to-weibo "Hello Weibo!"
+
+# 发布带图片
+/baoyu-post-to-weibo "看看这个" --image photo.png
+
+# 发布带视频
+/baoyu-post-to-weibo "看这个" --video clip.mp4
+```
+
+**头条文章** - 长篇 Markdown 文章：
+
+```bash
+# 发布文章
+/baoyu-post-to-weibo --article article.md
+
+# 带封面图
+/baoyu-post-to-weibo --article article.md --cover cover.jpg
+```
+
+**文章选项**：
+| 选项 | 说明 |
+|------|------|
+| `--cover <path>` | 封面图 |
+| `--title <text>` | 覆盖标题（最多 32 字） |
+| `--summary <text>` | 覆盖摘要（最多 44 字） |
+
+**说明**：脚本会将内容填入浏览器，用户需手动检查并发布。首次运行需手动登录微博（登录状态会保存）。
 
 ### AI 生成技能 (AI Generation Skills)
 
@@ -641,7 +700,7 @@ AI 驱动的生成后端。
 
 #### baoyu-url-to-markdown
 
-通过 Chrome CDP 抓取任意 URL 并转换为干净的 Markdown。支持两种抓取模式，适应不同场景。
+通过 Chrome CDP 抓取任意 URL 并转换为 Markdown。同时保存渲染后的 HTML 快照，Defuddle 失败时自动回退到旧版提取器。
 
 ```bash
 # 自动模式（默认）- 页面加载后立即抓取
@@ -738,6 +797,101 @@ AI 驱动的生成后端。
 | 并列要点 | `-` 无序列表或 `1.` 有序列表 |
 | 代码/命令 | `` `行内` `` 或 ` ```代码块``` ` |
 | 引用 | `>` 引用块 |
+
+#### baoyu-markdown-to-html
+
+将 Markdown 文件转换为样式化 HTML，支持微信公众号兼容主题、代码高亮，以及可选的外链底部引用。
+
+```bash
+# 基础转换
+/baoyu-markdown-to-html article.md
+
+# 主题 + 颜色
+/baoyu-markdown-to-html article.md --theme grace --color red
+
+# 将普通外链转换为文末引用
+/baoyu-markdown-to-html article.md --cite
+```
+
+#### baoyu-translate
+
+三模式翻译技能：快速（直接翻译）、标准（分析后翻译）、精翻（完整出版级工作流，含审校与润色）。
+
+```bash
+# 标准模式（默认）- 先分析再翻译
+/translate article.md --to zh-CN
+
+# 快速模式 - 直接翻译
+/translate article.md --mode quick --to ja
+
+# 精翻模式 - 完整工作流，含审校与润色
+/translate article.md --mode refined --to zh-CN
+
+# 翻译 URL
+/translate https://example.com/article --to zh-CN
+
+# 指定受众
+/translate article.md --to zh-CN --audience technical
+
+# 指定风格
+/translate article.md --to zh-CN --style humorous
+
+# 附加术语表
+/translate article.md --to zh-CN --glossary my-terms.md
+```
+
+**选项**：
+| 选项 | 说明 |
+|------|------|
+| `<source>` | 文件路径、URL 或行内文本 |
+| `--mode <mode>` | `quick`、`normal`（默认）、`refined` |
+| `--from <lang>` | 源语言（省略则自动检测） |
+| `--to <lang>` | 目标语言（默认：`zh-CN`） |
+| `--audience <type>` | 目标读者（默认：`general`） |
+| `--style <style>` | 翻译风格（默认：`storytelling`） |
+| `--glossary <file>` | 附加术语表文件 |
+
+**模式**：
+| 模式 | 步骤 | 适用场景 |
+|------|------|----------|
+| 快速 | 翻译 | 短文本、非正式内容 |
+| 标准 | 分析 → 翻译 | 文章、博客 |
+| 精翻 | 分析 → 翻译 → 审校 → 润色 | 出版级文档 |
+
+标准模式完成后，可回复「继续润色」或「refine」继续审校润色步骤。
+
+**受众预设**：
+| 值 | 说明 |
+|----|------|
+| `general` | 普通读者（默认）— 通俗语言，更多译注 |
+| `technical` | 开发者/工程师 — 常见技术术语少加注释 |
+| `academic` | 研究者/学者 — 正式语体，精确术语 |
+| `business` | 商务人士 — 商务友好语气 |
+
+也支持自定义受众描述，如 `--audience "对 AI 感兴趣的普通读者"`。
+
+**风格预设**：
+| 值 | 说明 |
+|----|------|
+| `storytelling` | 叙事流畅（默认）— 过渡自然，表达生动 |
+| `formal` | 正式、结构化 — 中性语气，无口语化表达 |
+| `technical` | 精确、文档风格 — 简洁，术语密集 |
+| `literal` | 贴近原文结构 — 最小化重构 |
+| `academic` | 学术、严谨 — 正式语体，复杂从句可接受 |
+| `business` | 简洁、结果导向 — 行动导向，高管友好 |
+| `humorous` | 保留幽默感 — 诙谐，在目标语言中重现喜剧效果 |
+| `conversational` | 口语化、亲切 — 友好，如同朋友间解释 |
+| `elegant` | 文学性、优雅 — 精心雕琢，注重韵律美感 |
+
+也支持自定义风格描述，如 `--style "诗意而抒情"`。
+
+**特性**：
+- 通过 EXTEND.md 自定义术语表，内置英中术语表
+- 面向受众的翻译，可调节注释深度
+- 长文档（4000+ 词）自动分块并行翻译
+- 比喻和修辞按意译而非逐字翻译
+- 为文化/专业术语添加译注
+- 输出目录保留所有中间文件
 
 ## 环境配置
 
@@ -842,6 +996,19 @@ HTTP_PROXY=http://127.0.0.1:7890 HTTPS_PROXY=http://127.0.0.1:7890 /baoyu-danger
 - 首次使用需确认免责声明
 - 通过环境变量或 Chrome 登录进行身份验证
 
+## 致谢
+
+本项目受到以下开源项目的启发，感谢它们的作者：
+
+- [x-article-publisher-skill](https://github.com/wshuyi/x-article-publisher-skill) by [@wshuyi](https://github.com/wshuyi) — 发布 X 文章技能的灵感来源
+- [doocs/md](https://github.com/doocs/md) by [@doocs](https://github.com/doocs) — Markdown 转 HTML 的核心实现逻辑
+- [高密度信息图 Prompt](https://waytoagi.feishu.cn/wiki/YG0zwalijihRREkgmPzcWRInnUg) by AJ@WaytoAGI — 信息图技能的灵感来源
+- [qiaomu-mondo-poster-design](https://github.com/joeseesun/qiaomu-mondo-poster-design) by [@joeseesun](https://github.com/joeseesun)（乔木） — Mondo 风格的灵感来源
+
 ## 许可证
 
 MIT
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=JimLiu/baoyu-skills&type=Date)](https://www.star-history.com/#JimLiu/baoyu-skills&Date)

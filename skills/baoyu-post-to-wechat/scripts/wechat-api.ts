@@ -307,7 +307,12 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, string
   return { frontmatter, body: match[2]! };
 }
 
-function renderMarkdownToHtml(markdownPath: string, theme: string = "default", color?: string): string {
+function renderMarkdownToHtml(
+  markdownPath: string,
+  theme: string = "default",
+  color?: string,
+  citeStatus: boolean = true
+): string {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const renderScript = path.join(__dirname, "md", "render.ts");
@@ -315,8 +320,9 @@ function renderMarkdownToHtml(markdownPath: string, theme: string = "default", c
 
   const renderArgs = ["-y", "bun", renderScript, markdownPath, "--theme", theme];
   if (color) renderArgs.push("--color", color);
+  if (citeStatus) renderArgs.push("--cite");
 
-  console.error(`[wechat-api] Rendering markdown with theme: ${theme}${color ? `, color: ${color}` : ""}`);
+  console.error(`[wechat-api] Rendering markdown with theme: ${theme}${color ? `, color: ${color}` : ""}, citeStatus: ${citeStatus}`);
   const result = spawnSync("npx", renderArgs, {
     stdio: ["inherit", "pipe", "pipe"],
     cwd: baseDir,
@@ -362,6 +368,7 @@ Options:
   --theme <name>      Theme name for markdown (default, grace, simple, modern). Default: default
   --color <name|hex>  Primary color (blue, green, vermilion, etc. or hex)
   --cover <path>      Cover image path (local or URL)
+  --no-cite           Disable bottom citations for ordinary external links in markdown mode
   --dry-run           Parse and render only, don't publish
   --help              Show this help
 
@@ -390,6 +397,7 @@ Example:
   npx -y bun wechat-api.ts article.html --title "My Article"
   npx -y bun wechat-api.ts images/ --type newspic --title "Photo Album"
   npx -y bun wechat-api.ts article.md --dry-run
+  npx -y bun wechat-api.ts article.md --no-cite
 `);
   process.exit(0);
 }
@@ -404,6 +412,7 @@ interface CliArgs {
   theme: string;
   color?: string;
   cover?: string;
+  citeStatus: boolean;
   dryRun: boolean;
 }
 
@@ -417,6 +426,7 @@ function parseArgs(argv: string[]): CliArgs {
     isHtml: false,
     articleType: "news",
     theme: "default",
+    citeStatus: true,
     dryRun: false,
   };
 
@@ -439,6 +449,10 @@ function parseArgs(argv: string[]): CliArgs {
       args.color = argv[++i];
     } else if (arg === "--cover" && argv[i + 1]) {
       args.cover = argv[++i];
+    } else if (arg === "--cite") {
+      args.citeStatus = true;
+    } else if (arg === "--no-cite") {
+      args.citeStatus = false;
     } else if (arg === "--dry-run") {
       args.dryRun = true;
     } else if (arg.startsWith("--") && argv[i + 1] && !argv[i + 1]!.startsWith("-")) {
@@ -513,8 +527,8 @@ async function main(): Promise<void> {
     if (!author) author = frontmatter.author || "";
     if (!digest) digest = frontmatter.digest || frontmatter.summary || frontmatter.description || "";
 
-    console.error(`[wechat-api] Theme: ${args.theme}${args.color ? `, color: ${args.color}` : ""}`);
-    htmlPath = renderMarkdownToHtml(filePath, args.theme, args.color);
+    console.error(`[wechat-api] Theme: ${args.theme}${args.color ? `, color: ${args.color}` : ""}, citeStatus: ${args.citeStatus}`);
+    htmlPath = renderMarkdownToHtml(filePath, args.theme, args.color, args.citeStatus);
     console.error(`[wechat-api] HTML generated: ${htmlPath}`);
     htmlContent = extractHtmlContent(htmlPath);
   }

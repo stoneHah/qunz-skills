@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { mkdir, readdir } from 'node:fs/promises';
 import net from 'node:net';
@@ -109,6 +109,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function getFreePort(): Promise<number> {
+  const fixed = parseInt(process.env.WECHAT_BROWSER_DEBUG_PORT || '', 10);
+  if (fixed > 0) return fixed;
   return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.unref();
@@ -169,9 +171,26 @@ function findChromeExecutable(): string | undefined {
   return undefined;
 }
 
+let _wslHome: string | null | undefined;
+function getWslWindowsHome(): string | null {
+  if (_wslHome !== undefined) return _wslHome;
+  if (!process.env.WSL_DISTRO_NAME) { _wslHome = null; return null; }
+  try {
+    const raw = execSync('cmd.exe /C "echo %USERPROFILE%"', { encoding: 'utf-8', timeout: 5000 }).trim().replace(/\r/g, '');
+    _wslHome = execSync(`wslpath -u "${raw}"`, { encoding: 'utf-8', timeout: 5000 }).trim() || null;
+  } catch { _wslHome = null; }
+  return _wslHome;
+}
+
 function getDefaultProfileDir(): string {
-  const base = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
-  return path.join(base, 'wechat-browser-profile');
+  const override = process.env.BAOYU_CHROME_PROFILE_DIR?.trim() || process.env.WECHAT_BROWSER_PROFILE_DIR?.trim();
+  if (override) return path.resolve(override);
+  const wslHome = getWslWindowsHome();
+  if (wslHome) return path.join(wslHome, '.local', 'share', 'baoyu-skills', 'chrome-profile');
+  const base = process.platform === 'darwin'
+    ? path.join(os.homedir(), 'Library', 'Application Support')
+    : process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
+  return path.join(base, 'baoyu-skills', 'chrome-profile');
 }
 
 async function fetchJson<T = unknown>(url: string): Promise<T> {
@@ -532,37 +551,126 @@ export async function postToWeChat(options: WeChatBrowserOptions): Promise<void>
     const absolutePaths = images.map(p => path.isAbsolute(p) ? p : path.resolve(process.cwd(), p));
     console.log(`[wechat-browser] Images: ${absolutePaths.join(', ')}`);
 
-    const { root } = await cdp.send<{ root: { nodeId: number } }>('DOM.getDocument', {}, { sessionId });
+    // --- PRIMARY approach: intercept file chooser dialog ---
+    let uploadSuccess = false;
+    try {
+      console.log('[wechat-browser] [primary] Enabling file chooser interception...');
+      await cdp.send('Page.setInterceptFileChooserDialog', { enabled: true }, { sessionId });
 
-    // Try primary selector, then fallback to any multi-file image input
-    let { nodeId } = await cdp.send<{ nodeId: number }>('DOM.querySelector', {
-      nodeId: root.nodeId,
-      selector: '.js_upload_btn_container input[type=file]',
-    }, { sessionId });
+      // Set up listener for file chooser opened event BEFORE clicking
+      const fileChooserPromise = new Promise<{ backendNodeId: number; mode: string }>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('File chooser dialog not opened within 10s')), 10_000);
+        cdp!.on('Page.fileChooserOpened', (params: unknown) => {
+          clearTimeout(timeout);
+          const p = params as { backendNodeId: number; mode: string };
+          console.log(`[wechat-browser] [primary] File chooser opened: backendNodeId=${p.backendNodeId}, mode=${p.mode}`);
+          resolve(p);
+        });
+      });
 
-    if (!nodeId) {
-      console.log('[wechat-browser] Primary file input not found, trying fallback selector...');
-      const fallback = await cdp.send<{ nodeId: number }>('DOM.querySelector', {
-        nodeId: root.nodeId,
-        selector: 'input[type=file][multiple][accept*="image"]',
+      // Trigger file chooser by calling .click() on the file input with userGesture
+      const fileInputSelectors = [
+        '.js_upload_btn_container input[type=file]',
+        'input[type=file][multiple][accept*="image"]',
+        'input[type=file][accept*="image"]',
+        'input[type=file][multiple]',
+        'input[type=file]',
+      ];
+
+      console.log('[wechat-browser] [primary] Clicking file input via JS .click() with userGesture...');
+      const clickResult = await cdp.send<{ result: { value: string } }>('Runtime.evaluate', {
+        expression: `
+          (function() {
+            const selectors = ${JSON.stringify(fileInputSelectors)};
+            for (const sel of selectors) {
+              const el = document.querySelector(sel);
+              if (el) {
+                el.click();
+                return JSON.stringify({ clicked: sel });
+              }
+            }
+            const debug = [];
+            document.querySelectorAll('input[type=file]').forEach((inp, i) => {
+              debug.push({ i, accept: inp.accept, multiple: inp.multiple, parentClass: inp.parentElement?.className?.slice(0, 60) });
+            });
+            return JSON.stringify({ error: 'no file input found', fileInputs: debug });
+          })()
+        `,
+        returnByValue: true,
+        userGesture: true,
       }, { sessionId });
-      nodeId = fallback.nodeId;
+      console.log(`[wechat-browser] [primary] Click result: ${clickResult.result.value}`);
+
+      const clickStatus = JSON.parse(clickResult.result.value);
+      if (clickStatus.error) {
+        throw new Error(`File input not found: ${clickStatus.error}`);
+      }
+
+      // Wait for the file chooser event
+      console.log('[wechat-browser] [primary] Waiting for file chooser dialog...');
+      const chooser = await fileChooserPromise;
+
+      console.log(`[wechat-browser] [primary] Setting files via backendNodeId=${chooser.backendNodeId}...`);
+      await cdp.send('DOM.setFileInputFiles', {
+        files: absolutePaths,
+        backendNodeId: chooser.backendNodeId,
+      }, { sessionId });
+      console.log('[wechat-browser] [primary] Files set successfully via file chooser interception');
+      uploadSuccess = true;
+    } catch (primaryErr) {
+      console.log(`[wechat-browser] [primary] File chooser approach failed: ${primaryErr instanceof Error ? primaryErr.message : String(primaryErr)}`);
+      // Disable interception before falling back
+      try { await cdp.send('Page.setInterceptFileChooserDialog', { enabled: false }, { sessionId }); } catch {}
     }
 
-    if (!nodeId) throw new Error('File input not found');
+    // --- FALLBACK approach: direct DOM.setFileInputFiles on nodeId ---
+    if (!uploadSuccess) {
+      console.log('[wechat-browser] [fallback] Trying direct DOM.setFileInputFiles...');
+      const { root } = await cdp.send<{ root: { nodeId: number } }>('DOM.getDocument', {}, { sessionId });
 
-    await cdp.send('DOM.setFileInputFiles', {
-      nodeId,
-      files: absolutePaths,
-    }, { sessionId });
+      const fileInputSelectors = [
+        '.js_upload_btn_container input[type=file]',
+        'input[type=file][multiple][accept*="image"]',
+        'input[type=file][accept*="image"]',
+        'input[type=file][multiple]',
+        'input[type=file]',
+      ];
 
-    // Dispatch change event to trigger the upload
-    await cdp.send('Runtime.evaluate', {
-      expression: `
-        const fileInput = document.querySelector('.js_upload_btn_container input[type=file]') || document.querySelector('input[type=file][multiple][accept*="image"]');
-        if (fileInput) fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-      `,
-    }, { sessionId });
+      let nodeId = 0;
+      for (const sel of fileInputSelectors) {
+        const result = await cdp.send<{ nodeId: number }>('DOM.querySelector', { nodeId: root.nodeId, selector: sel }, { sessionId });
+        if (result.nodeId) {
+          console.log(`[wechat-browser] [fallback] Found file input with selector: ${sel}`);
+          nodeId = result.nodeId;
+          break;
+        }
+      }
+
+      if (!nodeId) throw new Error('File input not found with any selector');
+
+      await cdp.send('DOM.setFileInputFiles', { nodeId, files: absolutePaths }, { sessionId });
+      console.log('[wechat-browser] [fallback] Files set via nodeId');
+
+      // Dispatch change event
+      await cdp.send('Runtime.evaluate', {
+        expression: `
+          (function() {
+            const selectors = ${JSON.stringify(fileInputSelectors)};
+            for (const sel of selectors) {
+              const el = document.querySelector(sel);
+              if (el) {
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                return 'dispatched on ' + sel;
+              }
+            }
+            return 'no input found for event dispatch';
+          })()
+        `,
+        returnByValue: true,
+      }, { sessionId });
+      console.log('[wechat-browser] [fallback] Change event dispatched');
+    }
 
     // Wait for images to upload
     console.log('[wechat-browser] Waiting for images to upload...');
@@ -570,11 +678,16 @@ export async function postToWeChat(options: WeChatBrowserOptions): Promise<void>
     for (let i = 0; i < 30; i++) {
       await sleep(2000);
       const uploadCheck = await cdp.send<{ result: { value: string } }>('Runtime.evaluate', {
-        expression: `JSON.stringify({ uploaded: document.querySelectorAll('.weui-desktop-upload__thumb, .pic_item, [class*=upload_thumb]').length })`,
+        expression: `
+          JSON.stringify({
+            uploaded: document.querySelectorAll('.weui-desktop-upload__thumb, .pic_item, [class*=upload_thumb], [class*="pic_item"], [class*="upload__thumb"]').length,
+            loading: document.querySelectorAll('[class*="upload_loading"], [class*="uploading"], .weui-desktop-upload__loading').length
+          })
+        `,
         returnByValue: true,
       }, { sessionId });
       const status = JSON.parse(uploadCheck.result.value);
-      console.log(`[wechat-browser] Upload progress: ${status.uploaded}/${targetCount}`);
+      console.log(`[wechat-browser] Upload progress: ${status.uploaded}/${targetCount} (loading: ${status.loading})`);
       if (status.uploaded >= targetCount) break;
     }
 

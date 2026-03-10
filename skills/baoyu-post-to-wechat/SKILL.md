@@ -1,6 +1,14 @@
 ---
 name: baoyu-post-to-wechat
-description: Posts content to WeChat Official Account (微信公众号) via API or Chrome CDP. Supports article posting (文章) with HTML, markdown, or plain text input, and image-text posting (贴图, formerly 图文) with multiple images. Use when user mentions "发布公众号", "post to wechat", "微信公众号", or "贴图/图文/文章".
+description: Posts content to WeChat Official Account (微信公众号) via API or Chrome CDP. Supports article posting (文章) with HTML, markdown, or plain text input, and image-text posting (贴图, formerly 图文) with multiple images. Markdown article workflows default to converting ordinary external links into bottom citations for WeChat-friendly output. Use when user mentions "发布公众号", "post to wechat", "微信公众号", or "贴图/图文/文章".
+version: 1.56.1
+metadata:
+  openclaw:
+    homepage: https://github.com/JimLiu/baoyu-skills#baoyu-post-to-wechat
+    requires:
+      anyBins:
+        - bun
+        - npx
 ---
 
 # Post to WeChat Official Account
@@ -11,7 +19,7 @@ description: Posts content to WeChat Official Account (微信公众号) via API 
 
 ## Script Directory
 
-**Agent Execution**: Determine this SKILL.md directory as `SKILL_DIR`, then use `${SKILL_DIR}/scripts/<name>.ts`.
+**Agent Execution**: Determine this SKILL.md directory as `{baseDir}`, then use `{baseDir}/scripts/<name>.ts`. Resolve `${BUN_X}` runtime: if `bun` installed → `bun`; if `npx` available → `npx -y bun`; else suggest installing bun.
 
 | Script | Purpose |
 |--------|---------|
@@ -23,14 +31,21 @@ description: Posts content to WeChat Official Account (微信公众号) via API 
 
 ## Preferences (EXTEND.md)
 
-Use Bash to check EXTEND.md existence (priority order):
+Check EXTEND.md existence (priority order):
 
 ```bash
-# Check project-level first
+# macOS, Linux, WSL, Git Bash
 test -f .baoyu-skills/baoyu-post-to-wechat/EXTEND.md && echo "project"
-
-# Then user-level (cross-platform: $HOME works on macOS/Linux/WSL)
+test -f "${XDG_CONFIG_HOME:-$HOME/.config}/baoyu-skills/baoyu-post-to-wechat/EXTEND.md" && echo "xdg"
 test -f "$HOME/.baoyu-skills/baoyu-post-to-wechat/EXTEND.md" && echo "user"
+```
+
+```powershell
+# PowerShell (Windows)
+if (Test-Path .baoyu-skills/baoyu-post-to-wechat/EXTEND.md) { "project" }
+$xdg = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { "$HOME/.config" }
+if (Test-Path "$xdg/baoyu-skills/baoyu-post-to-wechat/EXTEND.md") { "xdg" }
+if (Test-Path "$HOME/.baoyu-skills/baoyu-post-to-wechat/EXTEND.md") { "user" }
 ```
 
 ┌────────────────────────────────────────────────────────┬───────────────────┐
@@ -88,7 +103,7 @@ chrome_profile_path: /path/to/chrome/profile
 Before first use, suggest running the environment check. User can skip if they prefer.
 
 ```bash
-npx -y bun ${SKILL_DIR}/scripts/check-permissions.ts
+${BUN_X} {baseDir}/scripts/check-permissions.ts
 ```
 
 Checks: Chrome, profile isolation, Bun, Accessibility, clipboard, paste keystroke, API credentials, Chrome conflicts.
@@ -98,8 +113,8 @@ Checks: Chrome, profile isolation, Bun, Accessibility, clipboard, paste keystrok
 | Check | Fix |
 |-------|-----|
 | Chrome | Install Chrome or set `WECHAT_BROWSER_CHROME_PATH` env var |
-| Profile dir | Ensure `~/.local/share/wechat-browser-profile` is writable |
-| Bun runtime | `curl -fsSL https://bun.sh/install \| bash` |
+| Profile dir | Shared profile at `baoyu-skills/chrome-profile` (see CLAUDE.md Chrome Profile section) |
+| Bun runtime | `brew install oven-sh/bun/bun` (macOS) or `npm install -g bun` |
 | Accessibility (macOS) | System Settings → Privacy & Security → Accessibility → enable terminal app |
 | Clipboard copy | Ensure Swift/AppKit available (macOS Xcode CLI tools: `xcode-select --install`) |
 | Paste keystroke (macOS) | Same as Accessibility fix above |
@@ -111,8 +126,8 @@ Checks: Chrome, profile isolation, Bun, Accessibility, clipboard, paste keystrok
 For short posts with multiple images (up to 9):
 
 ```bash
-npx -y bun ${SKILL_DIR}/scripts/wechat-browser.ts --markdown article.md --images ./images/
-npx -y bun ${SKILL_DIR}/scripts/wechat-browser.ts --title "标题" --content "内容" --image img.png --submit
+${BUN_X} {baseDir}/scripts/wechat-browser.ts --markdown article.md --images ./images/
+${BUN_X} {baseDir}/scripts/wechat-browser.ts --title "标题" --content "内容" --image img.png --submit
 ```
 
 See [references/image-text-posting.md](references/image-text-posting.md) for details.
@@ -168,81 +183,7 @@ mkdir -p "$(pwd)/post-to-wechat/$(date +%Y-%m-%d)"
 - "Understanding AI Models" → `understanding-ai-models`
 - "人工智能的未来" → `ai-future` (translate to English for slug)
 
-<<<<<<< HEAD
-### Step 2: Check Markdown-to-HTML Skill
-
-**Skip if**: Input is `.html` file
-
-**Skill Discovery**:
-
-```bash
-# Check if baoyu-markdown-to-html exists
-test -f skills/baoyu-markdown-to-html/SKILL.md && echo "found"
-```
-
-| Result | Action |
-|--------|--------|
-| Found | Read its SKILL.md, continue to Step 3 |
-| Multiple skills | AskUserQuestion to choose |
-| Not found | Show installation suggestion |
-
-**When Not Found**:
-
-```
-No markdown-to-html skill found.
-
-Suggested installation:
-https://github.com/stoneHah/qunz-skills/blob/main/skills/baoyu-markdown-to-html/SKILL.md
-
-Options:
-A) Cancel - install the skill first
-B) Continue - provide HTML file manually
-```
-
-### Step 3: Convert Markdown to HTML
-
-**Skip if**: Input is `.html` file
-
-1. **Resolve theme** (first match wins, do NOT ask user if resolved):
-   - CLI `--theme` argument
-   - EXTEND.md `default_theme` (loaded in Step 0)
-   - Fallback: `default`
-
-2. **Execute conversion** (using the discovered skill), **always pass `--theme`**:
-
-```bash
-npx -y bun ${MD_TO_HTML_SKILL_DIR}/scripts/main.ts <markdown_file> --theme <theme>
-```
-
-**CRITICAL**: Always include `--theme` parameter. Never omit it, even if using `default`.
-
-3. **Parse JSON output** to get: `htmlPath`, `title`, `author`, `summary`, `contentImages`
-
-### Step 4: Validate Metadata
-
-Check extracted metadata from Step 3 (or HTML meta tags if direct HTML input).
-
-| Field | If Missing |
-|-------|------------|
-| Title | Prompt: "Enter title, or press Enter to auto-generate from content" |
-| Summary | Prompt: "Enter summary, or press Enter to auto-generate (recommended for SEO)" |
-| Author | Use fallback chain: CLI `--author` → frontmatter `author` → EXTEND.md `default_author` |
-
-**Auto-Generation Logic**:
-- **Title**: First H1/H2 heading, or first sentence
-- **Summary**: First paragraph, truncated to 120 characters
-
-**Cover Image Check** (required for `article_type=news`):
-1. Use CLI `--cover` if provided.
-2. Else use frontmatter (`coverImage`, `featureImage`, `cover`, `image`).
-3. Else check article directory default path: `imgs/cover.png`.
-4. Else fallback to first inline content image.
-5. If still missing, stop and request a cover image before publishing.
-
-### Step 5: Select Publishing Method and Configure
-=======
 ### Step 2: Select Publishing Method and Configure
->>>>>>> upstream/main
 
 **Ask publishing method** (unless specified in EXTEND.md or CLI):
 
@@ -254,11 +195,15 @@ Check extracted metadata from Step 3 (or HTML meta tags if direct HTML input).
 **If API Selected - Check Credentials**:
 
 ```bash
-# Check project-level
+# macOS, Linux, WSL, Git Bash
 test -f .baoyu-skills/.env && grep -q "WECHAT_APP_ID" .baoyu-skills/.env && echo "project"
-
-# Check user-level
 test -f "$HOME/.baoyu-skills/.env" && grep -q "WECHAT_APP_ID" "$HOME/.baoyu-skills/.env" && echo "user"
+```
+
+```powershell
+# PowerShell (Windows)
+if ((Test-Path .baoyu-skills/.env) -and (Select-String -Quiet -Pattern "WECHAT_APP_ID" .baoyu-skills/.env)) { "project" }
+if ((Test-Path "$HOME/.baoyu-skills/.env") -and (Select-String -Quiet -Pattern "WECHAT_APP_ID" "$HOME/.baoyu-skills/.env")) { "user" }
 ```
 
 **If Credentials Missing - Guide Setup**:
@@ -318,10 +263,15 @@ WECHAT_APP_SECRET=<user_input>
 
 **CRITICAL**: Publishing scripts handle markdown conversion internally. Do NOT pre-convert markdown to HTML — pass the original markdown file directly. This ensures the API method renders images as `<img>` tags (for API upload) while the browser method uses placeholders (for paste-and-replace workflow).
 
+**Markdown citation default**:
+- For markdown input, ordinary external links are converted to bottom citations by default.
+- Use `--no-cite` only if the user explicitly wants to keep ordinary external links inline.
+- Existing HTML input is left as-is; no extra citation conversion is applied.
+
 **API method** (accepts `.md` or `.html`):
 
 ```bash
-npx -y bun ${SKILL_DIR}/scripts/wechat-api.ts <file> --theme <theme> [--color <color>] [--title <title>] [--summary <summary>] [--author <author>] [--cover <cover_path>]
+${BUN_X} {baseDir}/scripts/wechat-api.ts <file> --theme <theme> [--color <color>] [--title <title>] [--summary <summary>] [--author <author>] [--cover <cover_path>] [--no-cite]
 ```
 
 **CRITICAL**: Always include `--theme` parameter. Never omit it, even if using `default`. Only include `--color` if explicitly set by user or EXTEND.md.
@@ -340,8 +290,8 @@ If script parameters do not expose the two comment fields, still ensure final AP
 **Browser method** (accepts `--markdown` or `--html`):
 
 ```bash
-npx -y bun ${SKILL_DIR}/scripts/wechat-article.ts --markdown <markdown_file> --theme <theme> [--color <color>]
-npx -y bun ${SKILL_DIR}/scripts/wechat-article.ts --html <html_file>
+${BUN_X} {baseDir}/scripts/wechat-article.ts --markdown <markdown_file> --theme <theme> [--color <color>] [--no-cite]
+${BUN_X} {baseDir}/scripts/wechat-article.ts --html <html_file>
 ```
 
 ### Step 5: Completion Report

@@ -21,10 +21,29 @@ default_image_size: null    # 1K|2K|4K|null (Google/APIMart, overrides quality)
 
 default_model:
   google: null              # e.g., "gemini-3-pro-image-preview", "gemini-3.1-flash-image-preview"
-  openai: null              # e.g., "gpt-image-1.5"
+  openai: null              # e.g., "gpt-image-1.5", "gpt-image-1"
   dashscope: null           # e.g., "z-image-turbo"
   replicate: null           # e.g., "google/nano-banana-pro"
   apimart: null             # e.g., "gemini-3-pro-image-preview" or "doubao-seedream-5-0-lite"
+
+batch:
+  max_workers: 10
+  provider_limits:
+    replicate:
+      concurrency: 5
+      start_interval_ms: 700
+    google:
+      concurrency: 3
+      start_interval_ms: 1100
+    openai:
+      concurrency: 3
+      start_interval_ms: 1100
+    dashscope:
+      concurrency: 3
+      start_interval_ms: 1100
+    apimart:
+      concurrency: 3
+      start_interval_ms: 1100
 ---
 ```
 
@@ -42,6 +61,9 @@ default_model:
 | `default_model.dashscope` | string\|null | null | DashScope default model |
 | `default_model.replicate` | string\|null | null | Replicate default model |
 | `default_model.apimart` | string\|null | null | APIMart default model |
+| `batch.max_workers` | int\|null | 10 | Batch worker cap |
+| `batch.provider_limits.<provider>.concurrency` | int\|null | provider default | Max simultaneous requests per provider |
+| `batch.provider_limits.<provider>.start_interval_ms` | int\|null | provider default | Minimum gap between request starts per provider |
 
 ## Examples
 
@@ -68,5 +90,15 @@ default_model:
   dashscope: "z-image-turbo"
   replicate: "google/nano-banana-pro"
   apimart: "gemini-3-pro-image-preview"
+  apimart: "gemini-3-pro-image-preview"
+batch:
+  max_workers: 10
+  provider_limits:
+    replicate:
+      concurrency: 5
+      start_interval_ms: 700
+    apimart:
+      concurrency: 3
+      start_interval_ms: 1100
 ---
 ```

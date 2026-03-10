@@ -36,22 +36,24 @@ function buildInput(prompt: string, args: CliArgs, referenceImages: string[]): R
 
   if (args.aspectRatio) {
     input.aspect_ratio = args.aspectRatio;
+  } else if (referenceImages.length > 0) {
+    input.aspect_ratio = "match_input_image";
   }
 
   if (args.n > 1) {
     input.number_of_images = args.n;
   }
 
+  if (args.quality === "normal") {
+    input.resolution = "1K";
+  } else if (args.quality === "2k") {
+    input.resolution = "2K";
+  }
+
   input.output_format = "png";
 
   if (referenceImages.length > 0) {
-    if (referenceImages.length === 1) {
-      input.image = referenceImages[0];
-    } else {
-      for (let i = 0; i < referenceImages.length; i++) {
-        input[`image${i > 0 ? i + 1 : ""}`] = referenceImages[i];
-      }
-    }
+    input.image_input = referenceImages;
   }
 
   return input;

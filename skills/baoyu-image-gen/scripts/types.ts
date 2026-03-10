@@ -13,9 +13,33 @@ export type CliArgs = {
   imageSize: string | null;
   referenceImages: string[];
   n: number;
+  batchFile: string | null;
+  jobs: number | null;
   json: boolean;
   help: boolean;
 };
+
+export type BatchTaskInput = {
+  id?: string;
+  prompt?: string | null;
+  promptFiles?: string[];
+  image?: string;
+  provider?: Provider | null;
+  model?: string | null;
+  ar?: string | null;
+  size?: string | null;
+  quality?: Quality | null;
+  imageSize?: "1K" | "2K" | "4K" | null;
+  ref?: string[];
+  n?: number;
+};
+
+export type BatchFile =
+  | BatchTaskInput[]
+  | {
+      tasks: BatchTaskInput[];
+      jobs?: number | null;
+    };
 
 export type ExtendConfig = {
   version: number;
@@ -29,5 +53,17 @@ export type ExtendConfig = {
     dashscope: string | null;
     replicate: string | null;
     apimart: string | null;
+  };
+  batch?: {
+    max_workers?: number | null;
+    provider_limits?: Partial<
+      Record<
+        Provider,
+        {
+          concurrency?: number | null;
+          start_interval_ms?: number | null;
+        }
+      >
+    >;
   };
 };

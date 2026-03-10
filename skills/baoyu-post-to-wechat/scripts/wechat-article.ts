@@ -20,6 +20,7 @@ interface ArticleOptions {
   markdownFile?: string;
   theme?: string;
   color?: string;
+  citeStatus?: boolean;
   author?: string;
   summary?: string;
   images?: string[];
@@ -182,13 +183,19 @@ async function pasteFromClipboardInEditor(session: ChromeSession): Promise<void>
   await sleep(1000);
 }
 
-async function parseMarkdownWithPlaceholders(markdownPath: string, theme?: string, color?: string): Promise<{ title: string; author: string; summary: string; htmlPath: string; contentImages: ImageInfo[] }> {
+async function parseMarkdownWithPlaceholders(
+  markdownPath: string,
+  theme?: string,
+  color?: string,
+  citeStatus: boolean = true
+): Promise<{ title: string; author: string; summary: string; htmlPath: string; contentImages: ImageInfo[] }> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const mdToWechatScript = path.join(__dirname, 'md-to-wechat.ts');
   const args = ['-y', 'bun', mdToWechatScript, markdownPath];
   if (theme) args.push('--theme', theme);
   if (color) args.push('--color', color);
+  if (!citeStatus) args.push('--no-cite');
 
   const result = spawnSync('npx', args, { stdio: ['inherit', 'pipe', 'pipe'] });
   if (result.status !== 0) {
@@ -383,7 +390,7 @@ async function removeExtraEmptyLineAfterImage(session: ChromeSession): Promise<b
 }
 
 export async function postArticle(options: ArticleOptions): Promise<void> {
-  const { title, content, htmlFile, markdownFile, theme, color, author, summary, images = [], submit = false, profileDir, cdpPort } = options;
+  const { title, content, htmlFile, markdownFile, theme, color, citeStatus = true, author, summary, images = [], submit = false, profileDir, cdpPort } = options;
   let { contentImages = [] } = options;
   let effectiveTitle = title || '';
   let effectiveAuthor = author || '';
@@ -392,7 +399,7 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
 
   if (markdownFile) {
     console.log(`[wechat] Parsing markdown: ${markdownFile}`);
-    const parsed = await parseMarkdownWithPlaceholders(markdownFile, theme, color);
+    const parsed = await parseMarkdownWithPlaceholders(markdownFile, theme, color, citeStatus);
     effectiveTitle = effectiveTitle || parsed.title;
     effectiveAuthor = effectiveAuthor || parsed.author;
     effectiveSummary = effectiveSummary || parsed.summary;
@@ -677,6 +684,7 @@ Options:
   --markdown <path>  Markdown file to convert and post (recommended)
   --theme <name>     Theme for markdown (default, grace, simple, modern)
   --color <name|hex> Primary color (blue, green, vermilion, etc. or hex)
+  --no-cite          Disable bottom citations for ordinary external links in markdown mode
   --author <name>    Author name
   --summary <text>   Article summary
   --image <path>     Content image, can repeat (only with --content)
@@ -687,13 +695,15 @@ Options:
 Examples:
   npx -y bun wechat-article.ts --markdown article.md
   npx -y bun wechat-article.ts --markdown article.md --theme grace --submit
+  npx -y bun wechat-article.ts --markdown article.md --no-cite
   npx -y bun wechat-article.ts --title "标题" --content "内容" --image img.png
   npx -y bun wechat-article.ts --title "标题" --html article.html --submit
 
 Markdown mode:
   Images in markdown are converted to placeholders. After pasting HTML,
   each placeholder is selected, scrolled into view, deleted, and replaced
-  with the actual image via paste.
+  with the actual image via paste. Ordinary external links are converted to
+  bottom citations by default.
 `);
   process.exit(0);
 }
@@ -709,6 +719,7 @@ async function main(): Promise<void> {
   let markdownFile: string | undefined;
   let theme: string | undefined;
   let color: string | undefined;
+  let citeStatus = true;
   let author: string | undefined;
   let summary: string | undefined;
   let submit = false;
@@ -723,6 +734,8 @@ async function main(): Promise<void> {
     else if (arg === '--markdown' && args[i + 1]) markdownFile = args[++i];
     else if (arg === '--theme' && args[i + 1]) theme = args[++i];
     else if (arg === '--color' && args[i + 1]) color = args[++i];
+    else if (arg === '--cite') citeStatus = true;
+    else if (arg === '--no-cite') citeStatus = false;
     else if (arg === '--author' && args[i + 1]) author = args[++i];
     else if (arg === '--summary' && args[i + 1]) summary = args[++i];
     else if (arg === '--image' && args[i + 1]) images.push(args[++i]!);
@@ -734,7 +747,7 @@ async function main(): Promise<void> {
   if (!markdownFile && !htmlFile && !title) { console.error('Error: --title is required (or use --markdown/--html)'); process.exit(1); }
   if (!markdownFile && !htmlFile && !content) { console.error('Error: --content, --html, or --markdown is required'); process.exit(1); }
 
-  await postArticle({ title: title || '', content, htmlFile, markdownFile, theme, color, author, summary, images, submit, profileDir, cdpPort });
+  await postArticle({ title: title || '', content, htmlFile, markdownFile, theme, color, citeStatus, author, summary, images, submit, profileDir, cdpPort });
 }
 
 await main().then(() => {
