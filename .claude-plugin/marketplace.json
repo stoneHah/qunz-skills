@@ -48,6 +48,15 @@
         "./skills/baoyu-format-markdown",
         "./skills/baoyu-markdown-to-html"
       ]
+    },
+    {
+      "name": "development-skills",
+      "description": "Development workflow skills for repository maintenance",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/baoyu-sync-upstream-main"
+      ]
     }
   ]
 }

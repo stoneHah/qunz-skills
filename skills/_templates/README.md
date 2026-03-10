@@ -129,6 +129,18 @@
 4. 若核心是“多 provider 能力封装”，使用 `template-generation-engine.SKILL.md`。
 5. 其余输入->输出的脚本化处理，使用 `template-cli-transformer.SKILL.md`。
 
+## 补充指南
+
+### Python 脚本执行
+
+当 skill 使用 Python 脚本（而非 TypeScript）时，参考 `python-script-guide.md`。
+
+适用场景：
+- 脚本用 Python 编写，依赖通过 `pyproject.toml` 管理
+- 使用 `uv run` 替代 `npx -y bun` 执行
+
+该指南可与上述任意模板组合使用，提供 Script Directory、执行命令、目录结构的适配方案。
+
 ## 编写规范（和现有仓库保持一致）
 
 - Frontmatter 仅保留：
